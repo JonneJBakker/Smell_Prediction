@@ -14,6 +14,7 @@ def split_data(df, smiles_col):
     label_cols = [col for col in df.columns if col not in not_chosen_columns]
 
     x_train, x_test, y_train, y_test = train_test_split(df['smiles'], df[label_cols], test_size=0.2, random_state=RANDOM_SEED)
-    return x_train, x_test, y_train, y_test, label_cols
+    x_val, x_test, y_val, y_test = train_test_split(x_test, y_test, test_size=0.2, random_state=RANDOM_SEED)
+    return x_train, x_val, x_test, y_train, y_val, y_test,  label_cols
 
 

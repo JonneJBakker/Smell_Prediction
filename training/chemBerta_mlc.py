@@ -12,12 +12,13 @@ from Data.data_prep import split_data
 
 
 def train_chemBerta(df, smiles_col):
-    x_train, x_test, y_train, y_test, label_cols = split_data(df, smiles_col=smiles_col)
+    x_train, x_val, x_test, y_train, y_val, y_test, label_cols = split_data(df, smiles_col=smiles_col)
+
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=True)
 
     train_encodings = tokenizer(list(x_train), truncation=True, padding=True, max_length=512, return_tensors="pt")
-    test_encodings = tokenizer(list(x_test), truncation=True, padding=True, max_length=512, return_tensors="pt")
+    test_encodings = tokenizer(list(x_val), truncation=True, padding=True, max_length=512, return_tensors="pt")
 
     class ChemDataset(torch.utils.data.Dataset):
         def __init__(self, encodings, labels):
@@ -33,7 +34,7 @@ def train_chemBerta(df, smiles_col):
             return len(self.labels)
 
     train_dataset = ChemDataset(train_encodings, y_train)
-    test_dataset = ChemDataset(test_encodings, y_test)
+    test_dataset = ChemDataset(test_encodings, y_val)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         MODEL_NAME,
