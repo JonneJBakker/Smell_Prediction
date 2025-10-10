@@ -1,12 +1,12 @@
 import pandas as pd
 
-from utils.data_prep import split_data
-from utils.data_visualizer import visualize_data
+from Data.data_prep import split_data
+from training.chemBerta_mlc import train_chemBerta
 
-
-DATA_PATH = r'C:\Users\annad\PycharmProjects\Smell_Prediction\Data\Multi-Labelled_Smiles_Odors_dataset.csv'
+DATA_PATH = r'Data\Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
 
     data = pd.read_csv(DATA_PATH)
     ## visualize_data(data)
-    split_data(data)
+    #split_data(data, smiles_col="nonStereoSMILES")
+    train_chemBerta(data, smiles_col="nonStereoSMILES")
