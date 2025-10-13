@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import TSNE
 
 def visualize_data(df):
-    df = pd.read_csv(r'C:\Users\annad\PycharmProjects\Smell_Prediction\Data\Multi-Labelled_Smiles_Odors_dataset.csv')
+
     label_cols = df.columns[2:]
 
     # Count number of samples with label = 1 for each label
