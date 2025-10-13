@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numpy.f2py.cfuncs import commonhooks
 from sklearn.model_selection import train_test_split
 from rdkit import Chem
 from rdkit import RDLogger
@@ -73,8 +74,8 @@ def augment_train_csv(smiles_train_path, labels_train_csv_path, out_csv_path, sm
     #check for rare labels
     prevalences = labels_train.mean(axis=0)
     cutoff = np.percentile(prevalences.values, percentile)
-    rare_labels = [c for c, p in prevalences.items() if p >= cutoff]
-    print(rare_labels)
+    commonhooks_labels = [c for c, p in prevalences.items() if p >= cutoff]
+    print(commonhooks_labels)
 
     rows = []
     for idx, row in df.iterrows():
@@ -87,7 +88,7 @@ def augment_train_csv(smiles_train_path, labels_train_csv_path, out_csv_path, sm
             rows.append(base)
 
         # check if row has rare label
-        is_rare_row = any((int(base[lbl]) == 1) for lbl in rare_labels)
+        is_rare_row = any((int(base[lbl]) == 1) for lbl in commonhooks_labels)
 
         if not is_rare_row:
             # collect unique randomized variants for this molecule
