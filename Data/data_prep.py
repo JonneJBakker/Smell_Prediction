@@ -29,7 +29,7 @@ def split_data(df, smiles_col):
     labels_test.to_csv("Data/splits/labels_test.csv", index=False)
     labels_val.to_csv("Data/splits/labels_val.csv", index=False)
 
-    #return smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test,  label_cols
+    return smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test,  label_cols
 
 
 def valid_smiles(s: str) -> bool:
@@ -74,8 +74,8 @@ def augment_train_csv(smiles_train_path, labels_train_csv_path, out_csv_path, sm
     #check for rare labels
     prevalences = labels_train.mean(axis=0)
     cutoff = np.percentile(prevalences.values, percentile)
-    commonhooks_labels = [c for c, p in prevalences.items() if p >= cutoff]
-    print(commonhooks_labels)
+    rare_labels = [c for c, p in prevalences.items() if p >= cutoff]
+    print(rare_labels)
 
     rows = []
     for idx, row in df.iterrows():
@@ -88,7 +88,7 @@ def augment_train_csv(smiles_train_path, labels_train_csv_path, out_csv_path, sm
             rows.append(base)
 
         # check if row has rare label
-        is_rare_row = any((int(base[lbl]) == 1) for lbl in commonhooks_labels)
+        is_rare_row = any((int(base[lbl]) == 1) for lbl in rare_labels)
 
         if not is_rare_row:
             # collect unique randomized variants for this molecule

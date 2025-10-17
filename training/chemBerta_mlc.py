@@ -33,36 +33,24 @@ def train_chemBerta(df, smiles_col):
     train_dataset = ChemDataset(smiles_train, labels_train)
     val_dataset = ChemDataset(smiles_val, labels_val)
 
-
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
-        labels = labels.astype(np.float32)  # (N, L)
-        probs = 1 / (1 + np.exp(-logits))  # sigmoid
+        probs = 1 / (1 + np.exp(-logits))
+        # default threshold 0.5 for F1
+        preds = (probs >= 0.5).astype(int)
 
         metrics = {}
-        # ROC-AUC (if each label has both classes in the eval set)
         try:
-            metrics["roc_auc_micro"] = roc_auc_score(labels, probs, average="micro")
-            metrics["roc_auc_macro"] = roc_auc_score(labels, probs, average="macro")
+            metrics["auroc_macro"] = roc_auc_score(labels, probs, average="macro")
+            metrics["auroc_micro"] = roc_auc_score(labels, probs, average="micro")
         except ValueError:
-            # happens if a label has only one class present in y_true
+            # raised if a label is single-class in val; skip AUROC then
             pass
 
-        # PR-AUC (micro)
-        try:
-            metrics["pr_auc_micro"] = average_precision_score(labels, probs, average="micro")
-        except ValueError:
-            pass
-
-        # Example thresholding at 0.5 for f1-ish proxy (not exact F1, just quick stats)
-        preds = (probs >= 0.5).astype(np.float32)
-        tp = (preds * labels).sum()
-        fp = (preds * (1 - labels)).sum()
-        fn = ((1 - preds) * labels).sum()
-        precision = tp / (tp + fp + 1e-8)
-        recall = tp / (tp + fn + 1e-8)
-        f1 = 2 * precision * recall / (precision + recall + 1e-8)
-        metrics.update(dict(precision=precision, recall=recall, f1=f1))
+        metrics["ap_macro"] = average_precision_score(labels, probs, average="macro")
+        metrics["ap_micro"] = average_precision_score(labels, probs, average="micro")
+        metrics["f1_macro@0.5"] = f1_score(labels, preds, average="macro", zero_division=0)
+        metrics["f1_micro@0.5"] = f1_score(labels, preds, average="micro", zero_division=0)
         return metrics
 
     model = AutoModelForSequenceClassification.from_pretrained(
