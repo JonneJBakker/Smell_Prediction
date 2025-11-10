@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-
+from matplotlib.colors import LogNorm
+from itertools import combinations
 
 class SmellFragmentAnalyzer:
     """
@@ -32,7 +33,7 @@ class SmellFragmentAnalyzer:
         smiles_col: str = "smiles",
         smell_col: str = "smell_classes",
         frag_prefix: str = "fr_",
-        smell_separator: str = ",",
+        smell_separator: str = ";",
     ):
         self.smiles_col = smiles_col
         self.smell_col = smell_col
@@ -139,6 +140,14 @@ class SmellFragmentAnalyzer:
         self.frag_smell_df = mat
         return mat
 
+    def get_top_smells(self, n: int = 20) -> list:
+        """Return top-N most frequent smells by occurrence count."""
+        smell_counts = {}
+        for smells in self.df[self.smell_col]:
+            for s in smells:
+                smell_counts[s] = smell_counts.get(s, 0) + 1
+        return sorted(smell_counts, key=smell_counts.get, reverse=True)[:n]
+
     def build_smell_cooccurrence(self) -> pd.DataFrame:
         """
         Build symmetric smell x smell co-occurrence matrix.
@@ -163,6 +172,67 @@ class SmellFragmentAnalyzer:
 
         self.smell_co_matrix = co
         return co
+
+    def build_fragment_cooccurrence(
+            self,
+            mode: str = "binary",  # "binary", "min", "product"
+            min_total: int = 0,  # drop fragments whose total diag count < min_total
+    ) -> pd.DataFrame:
+        """
+        Build a fragment x fragment co-occurrence matrix.
+        - mode="binary": counts molecules where both fragments are present (off-diagonal += 1);
+                         diagonal = # molecules where fragment is present
+        - mode="min":    off-diagonal += min(count_i, count_j); diagonal += count_i
+        - mode="product":off-diagonal += count_i*count_j; diagonal += count_i
+
+        Returns: DataFrame (index=columns=fragment names) with integer counts.
+        """
+        if self.df is None:
+            raise RuntimeError("Call .load(...) first.")
+        if not self.frag_cols:
+            raise RuntimeError("No fragment columns found.")
+
+        frags = self.frag_cols
+        M = pd.DataFrame(0, index=frags, columns=frags, dtype=float)
+
+        for _, row in self.df.iterrows():
+            # grab fragment counts for this molecule
+            counts = row[frags].astype(int)
+            present = counts[counts > 0]
+
+            if present.empty:
+                continue
+
+            # diagonal updates
+            if mode == "binary":
+                for f in present.index:
+                    M.loc[f, f] += 1
+            elif mode == "min" or mode == "product":
+                for f, c in present.items():
+                    M.loc[f, f] += c
+            else:
+                raise ValueError("mode must be 'binary', 'min', or 'product'.")
+
+            # off-diagonals
+            idxs = present.index.tolist()
+            for f1, f2 in combinations(idxs, 2):
+                if mode == "binary":
+                    inc = 1
+                elif mode == "min":
+                    inc = min(int(present[f1]), int(present[f2]))
+                else:  # product
+                    inc = int(present[f1]) * int(present[f2])
+                M.loc[f1, f2] += inc
+                M.loc[f2, f1] += inc
+
+        # optional: drop very rare fragments by diagonal (total presence)
+        if min_total > 0:
+            keep = M.index[M.values.diagonal() >= min_total]
+            M = M.loc[keep, keep]
+
+        # store for plotting
+        self.frag_co_matrix = M.astype(float)
+        return self.frag_co_matrix
 
     def build_fragment_correlation(self, method: str = "pearson") -> pd.DataFrame:
         """
@@ -217,7 +287,7 @@ class SmellFragmentAnalyzer:
         title: str,
         xlabel: str,
         ylabel: str,
-        figsize: Tuple[int, int] = (12, 7),
+        figsize: Tuple[int, int] = (20, 20),
         xtick_rotation: int = 90,
         ytick_rotation: int = 0,
         sort_rows_by_sum: bool = True,
@@ -253,62 +323,422 @@ class SmellFragmentAnalyzer:
         plt.tight_layout()
         plt.show()
 
+
     def plot_fragment_smell_heatmap(
-        self,
-        top_k_frags: Optional[int] = 40,
-        top_k_smells: Optional[int] = None,
-        annotate: bool = False,
+            self,
+            top_k_frags: int = 100,
+            top_k_smells: int = 80,
+            scale: str = "log",  # "log", "percentile", "normalize", "linear"
+            normalize: str = "by_smell",  # used only if scale == "normalize"; "by_smell" or "by_fragment"
+            log_pseudocount: float = 0.0,  # added before LogNorm
+            exclude_smells: list = None,
+            annotate: bool = False,
+            hide_zero_rows: bool = True,
     ) -> None:
         """
-        Heatmap of fragments (rows) vs smells (cols).
+        Heatmap of fragments (rows) vs smells (cols) with robust scaling/normalization.
+
+        - top_k_*: limit rows/cols for readability
+        - scale="log": uses LogNorm with +pseudocount so zeros are visible
+        - scale="percentile": 5–95% clipping for contrast
+        - scale="normalize": per-column ("by_smell") or per-row ("by_fragment") 0–1 scaling
+        - exclude_smells: remove dominant or unwanted smells from columns
         """
+
         if self.frag_smell_df is None:
             raise RuntimeError("Call .build_fragment_smell_matrix(...) first.")
-        self._heatmap(
-            self.frag_smell_df,
-            title="Functional Groups vs Smell Classes",
-            xlabel="Smell Class",
-            ylabel="Functional Group",
-            clip_top_k_rows=top_k_frags,
-            clip_top_k_cols=top_k_smells,
-            annotate=annotate,
-        )
 
-    def plot_smell_cooccurrence_heatmap(self, annotate: bool = False) -> None:
+        # --- start from the computed matrix
+        mat = self.frag_smell_df.copy()  # rows: fragments, cols: smells
+
+        # Optionally exclude smells
+        if exclude_smells:
+            keep_cols = [c for c in mat.columns if c not in set(exclude_smells)]
+            mat = mat.loc[:, keep_cols]
+
+        # Limit to top smells by frequency in the original data
+        if top_k_smells is not None:
+            # get_top_smells uses the raw dataset; intersect with existing columns
+            top_smells = [s for s in self.get_top_smells(top_k_smells) if s in mat.columns]
+            if top_smells:
+                mat = mat.loc[:, top_smells]
+
+        # Drop zero-only rows (optional; helps declutter)
+        if hide_zero_rows:
+            nonzero = (mat.sum(axis=1) > 0)
+            mat = mat.loc[nonzero]
+
+        # If too many fragments, keep the most informative (highest total across smells)
+        if top_k_frags is not None and mat.shape[0] > top_k_frags:
+            mat = mat.loc[mat.sum(axis=1).sort_values(ascending=False).head(top_k_frags).index]
+
+        # --- choose scaling
+        title_suffix = f"{scale}"
+        cmap = "plasma"
+
+        if scale == "log":
+            # + pseudocount to avoid log(0)
+            plot_vals = mat.values.astype(float) + float(log_pseudocount)
+            # vmin: smallest positive
+            positive = plot_vals[plot_vals > 0]
+            vmin = positive.min() if positive.size else 1e-6
+            vmax = np.nanmax(plot_vals) if np.isfinite(np.nanmax(plot_vals)) else vmin * 10
+
+            plt.figure(figsize=(15, 15))
+            im = plt.imshow(plot_vals, cmap=cmap, norm=LogNorm(vmin=vmin, vmax=max(vmax, vmin * 10)))
+            cbar = plt.colorbar(im)
+            cbar.set_label(f"Count (log)")
+
+        elif scale == "percentile":
+            vals = mat.values.flatten()
+            low, high = np.percentile(vals, [5, 95]) if vals.size else (0, 1)
+            if low == high:
+                low, high = 0, max(high, 1)
+            plt.figure(figsize=(12, 7))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=low, vmax=high)
+            plt.colorbar(im)
+
+        elif scale == "normalize":
+            # column-wise (per smell) or row-wise (per fragment) normalization to [0,1]
+            m = mat.astype(float).copy()
+            if normalize == "by_smell":  # divide each column by its max
+                col_max = m.max(axis=0)
+                m = m.divide(col_max.replace(0, np.nan), axis=1).fillna(0.0)
+                title_suffix += " (by_smell)"
+            elif normalize == "by_fragment":  # divide each row by its max
+                row_max = m.max(axis=1)
+                m = m.divide(row_max.replace(0, np.nan), axis=0).fillna(0.0)
+                title_suffix += " (by_fragment)"
+            else:
+                raise ValueError("normalize must be 'by_smell' or 'by_fragment' when scale='normalize'.")
+
+            plt.figure(figsize=(15, 15))
+            im = plt.imshow(m.values, cmap="viridis", vmin=0, vmax=1)
+            plt.colorbar(im, label="Normalized (0–1)")
+            mat = m  # for labels/annotations below
+
+        else:  # linear
+            vmin, vmax = mat.values.min(), mat.values.max()
+            if vmin == vmax:
+                vmin, vmax = 0, vmin + 1
+            plt.figure(figsize=(12, 7))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
+            plt.colorbar(im)
+
+        # --- axes, labels, annotations
+        plt.title(f"Functional Groups vs Smell Classes ({title_suffix})")
+        plt.xlabel("Smell Class")
+        plt.ylabel("Functional Group")
+        plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
+        plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
+
+        if annotate and (mat.shape[0] * mat.shape[1] <= 2000):
+            for i in range(mat.shape[0]):
+                for j in range(mat.shape[1]):
+                    val = mat.values[i, j]
+                    # show integers where sensible; otherwise 2 decimals
+                    text = f"{int(val)}" if float(val).is_integer() else f"{val:.2f}"
+                    plt.text(j, i, text, ha="center", va="center", fontsize=7)
+
+        plt.tight_layout()
+        plt.show()
+
+    def plot_smell_cooccurrence_heatmap(
+            self,
+            top_k_smells: int = 80,
+            scale: str = "log",  # "percentile", "log", "normalize", or "linear"
+            annotate: bool = False,
+    ) -> None:
         """
-        Heatmap of smell co-occurrence.
+        Heatmap of smell co-occurrence with adjustable color scaling.
         """
         if self.smell_co_matrix is None:
             raise RuntimeError("Call .build_smell_cooccurrence() first.")
-        self._heatmap(
-            self.smell_co_matrix,
-            title="Smell Co-occurrence Matrix",
-            xlabel="Smell",
-            ylabel="Smell",
-            xtick_rotation=90,
-            ytick_rotation=0,
-            annotate=annotate,
-        )
+
+        top_smells = self.get_top_smells(top_k_smells)
+        mat = self.smell_co_matrix.loc[top_smells, top_smells].copy()
+
+        if scale == "normalize":
+            mat = mat.div(np.diag(mat), axis=1).fillna(0)
+            vmin, vmax = 0, 1
+            cmap = "viridis"
+        elif scale == "log":
+            from matplotlib.colors import LogNorm
+            mat[mat <= 0] = np.nan
+            norm = LogNorm()
+            cmap = "plasma"
+            vmin = vmax = None
+        elif scale == "percentile":
+            vals = mat.values.flatten()
+            low, high = np.percentile(vals, [5, 95])
+            vmin, vmax = low, high
+            cmap = "plasma"
+        else:  # linear
+            vmin, vmax = mat.values.min(), mat.values.max()
+            cmap = "plasma"
+
+        plt.figure(figsize=(15, 15))
+        if scale == "log":
+            im = plt.imshow(mat.values, cmap=cmap, norm=norm)
+        else:
+            im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
+        plt.colorbar(im)
+        plt.title(f"Smell Co-occurrence (Top {top_k_smells}, {scale} scale)")
+        plt.xlabel("Smell")
+        plt.ylabel("Smell")
+        plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
+        plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
+        plt.tight_layout()
+        plt.show()
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
 
     def plot_fragment_correlation_heatmap(
-        self,
-        top_k_frags: Optional[int] = 40,
-        annotate: bool = False,
+            self,
+            top_k_frags: int = 90,
+            scale: str = "log",  # "log", "percentile", "normalize", "linear"
+            log_pseudocount: float = 0.0,  # avoid log(0)
+            hide_diagonal: bool = True,
+            annotate: bool = False,
     ) -> None:
         """
-        Heatmap of fragment-fragment correlation.
+        Heatmap of fragment-fragment correlation (or co-occurrence) with log scaling options.
         """
+
         if self.frag_corr is None:
             raise RuntimeError("Call .build_fragment_correlation() first.")
-        self._heatmap(
-            self.frag_corr,
-            title="Correlation Between Functional Groups",
-            xlabel="Functional Group",
-            ylabel="Functional Group",
-            clip_top_k_rows=top_k_frags,
-            clip_top_k_cols=top_k_frags,
-            annotate=annotate,
-        )
+
+        # Limit to top fragments (by variance or absolute correlation magnitude)
+        mat = self.frag_corr.copy()
+        if mat.shape[0] > top_k_frags:
+            # pick top fragments with highest mean absolute correlation
+            scores = mat.abs().mean(axis=1).sort_values(ascending=False)
+            top = scores.head(top_k_frags).index
+            mat = mat.loc[top, top]
+
+        # Optionally hide diagonal (always 1 for correlation)
+        if hide_diagonal:
+            np.fill_diagonal(mat.values, 0)
+
+        cmap = "plasma"
+        title_suffix = scale
+
+        if scale == "log":
+            # shift to positive domain: correlation in [-1,1] → take abs, + pseudocount
+            plot_vals = np.abs(mat.values) + log_pseudocount
+            positive = plot_vals[plot_vals > 0]
+            vmin = positive.min() if positive.size else 1e-6
+            vmax = np.nanmax(plot_vals) if np.isfinite(np.nanmax(plot_vals)) else vmin * 10
+
+            plt.figure(figsize=(10, 8))
+            im = plt.imshow(plot_vals, cmap=cmap, norm=LogNorm(vmin=vmin, vmax=max(vmax, vmin * 10)))
+            plt.colorbar(im, label=f"|Correlation| (log)")
+
+        elif scale == "percentile":
+            vals = mat.values.flatten()
+            low, high = np.percentile(vals, [5, 95])
+            if low == high:
+                low, high = 0, max(1, high)
+            plt.figure(figsize=(10, 8))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=low, vmax=high)
+            plt.colorbar(im, label="Correlation")
+
+        elif scale == "normalize":
+            # rescale each column to 0–1 range
+            m = mat.astype(float)
+            m = (m - m.min()) / (m.max() - m.min() + 1e-9)
+            plt.figure(figsize=(10, 8))
+            im = plt.imshow(m.values, cmap="viridis", vmin=0, vmax=1)
+            plt.colorbar(im, label="Normalized 0–1")
+            mat = m
+            title_suffix += " (normalized)"
+
+        else:  # linear
+            vmin, vmax = mat.values.min(), mat.values.max()
+            if vmin == vmax:
+                vmin, vmax = 0, vmin + 1
+            plt.figure(figsize=(15, 15))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
+            plt.colorbar(im, label="Correlation")
+
+        plt.title(f"Fragment–Fragment Correlation ({title_suffix})")
+        plt.xlabel("Functional Group")
+        plt.ylabel("Functional Group")
+        plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
+        plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
+
+        if annotate and mat.shape[0] <= 30:
+            for i in range(mat.shape[0]):
+                for j in range(mat.shape[1]):
+                    plt.text(j, i, f"{mat.values[i, j]:.2f}", ha="center", va="center", fontsize=7)
+
+        plt.tight_layout()
+        plt.show()
+
+    def plot_fragment_cooccurrence_heatmap(
+            self,
+            top_k_frags: int = 90,
+            scale: str = "log",  # "log", "percentile", "normalize", "linear"
+            log_pseudocount: float = 0.0,  # added before LogNorm so zeros show up
+            hide_diagonal: bool = True,  # hide big diagonals to emphasize co-occur
+            min_co: float = 0.0,  # zero-out tiny co-occurrences (< min_co)
+            annotate: bool = False,
+    ) -> None:
+        """
+        Heatmap of fragment–fragment *co-occurrence counts* (not correlation).
+        Supports log scaling with a pseudocount.
+        """
+        if not hasattr(self, "frag_co_matrix") or self.frag_co_matrix is None:
+            raise RuntimeError("Call .build_fragment_cooccurrence(...) first.")
+
+        mat = self.frag_co_matrix.copy()
+
+        # keep most 'connected' fragments to reduce clutter
+        if mat.shape[0] > top_k_frags:
+            # score by total off-diagonal strength
+            offdiag_sum = mat.sum(axis=1) - np.diag(mat.values)
+            top = offdiag_sum.sort_values(ascending=False).head(top_k_frags).index
+            mat = mat.loc[top, top]
+
+        # threshold tiny counts (optional)
+        if min_co > 0:
+            mat = mat.mask(mat < min_co, 0)
+
+        # optionally remove diagonal
+        if hide_diagonal:
+            np.fill_diagonal(mat.values, 0)
+
+        cmap = "plasma"
+        title_suffix = scale
+
+        if scale == "log":
+            vals = mat.values.astype(float) + float(log_pseudocount)
+            # guard rails for LogNorm
+            positive = vals[vals > 0]
+            vmin = positive.min() if positive.size else 1e-6
+            vmax = np.nanmax(vals) if np.isfinite(np.nanmax(vals)) else vmin * 10
+
+            plt.figure(figsize=(15, 15))
+            im = plt.imshow(vals, cmap=cmap, norm=LogNorm(vmin=vmin, vmax=max(vmax, vmin * 10)))
+            cbar = plt.colorbar(im)
+            cbar.set_label(f"Count (log)")
+
+        elif scale == "percentile":
+            flat = mat.values.flatten()
+            low, high = np.percentile(flat, [5, 95]) if flat.size else (0, 1)
+            if low == high:
+                low, high = 0, max(1, high)
+            plt.figure(figsize=(10, 8))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=low, vmax=high)
+            plt.colorbar(im, label="Co-occurrence")
+
+        elif scale == "normalize":
+            # 0–1 normalization by global min/max (on selected submatrix)
+            m = mat.astype(float)
+            mn, mx = m.values.min(), m.values.max()
+            if mn == mx:
+                mn, mx = 0, mn + 1
+            m = (m - mn) / (mx - mn)
+            plt.figure(figsize=(10, 8))
+            im = plt.imshow(m.values, cmap="viridis", vmin=0, vmax=1)
+            plt.colorbar(im, label="Normalized (0–1)")
+            mat = m
+            title_suffix += " (normalized)"
+
+        else:  # linear
+            vmin, vmax = mat.values.min(), mat.values.max()
+            if vmin == vmax:
+                vmin, vmax = 0, vmin + 1
+            plt.figure(figsize=(15, 15))
+            im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
+            plt.colorbar(im, label="Co-occurrence")
+
+        plt.title(f"Fragment–Fragment Co-occurrence ({title_suffix})")
+        plt.xlabel("Functional Group")
+        plt.ylabel("Functional Group")
+        plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
+        plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
+
+        if annotate and mat.shape[0] <= 30:
+            for i in range(mat.shape[0]):
+                for j in range(mat.shape[1]):
+                    plt.text(j, i, f"{mat.values[i, j]:.0f}", ha="center", va="center", fontsize=7)
+
+        plt.tight_layout()
+        plt.show()
+
+    def print_summary_stats(self, top_n: int = 10) -> None:
+        """
+        Print useful statistics about fragments, smells, and co-occurrences.
+        Requires that .load() and .build_fragment_smell_matrix() were run.
+        Optionally includes fragment–fragment co-occurrence stats if available.
+        """
+        if self.df is None:
+            raise RuntimeError("Load your dataset first with .load(...)")
+
+        print(" === DATASET SUMMARY ===")
+        print(f"Total molecules: {len(self.df):,}")
+
+        # --- Fragments ---
+        if self.frag_cols:
+            frag_counts = (self.df[self.frag_cols] > 0).sum()
+            n_frags = len(self.frag_cols)
+            avg_frags = frag_counts.sum() / len(self.df)
+            print(f"Total fragment types: {n_frags:,}")
+            print(f"Average fragments per molecule: {avg_frags:.2f}")
+            print("\nTop fragments:")
+            print(frag_counts.sort_values(ascending=False).head(top_n))
+        else:
+            print("No fragment columns detected.")
+
+        # --- Smells ---
+        if self.smell_col in self.df.columns:
+            smells_flat = [s for lst in self.df[self.smell_col] for s in lst]
+            if len(smells_flat) == 0:
+                print("\nNo smell data found.")
+            else:
+                smell_counts = pd.Series(smells_flat).value_counts()
+                avg_smells = smell_counts.sum() / len(self.df)
+                print(f"\nTotal unique smell labels: {len(smell_counts):,}")
+                print(f"Average smells per molecule: {avg_smells:.2f}")
+                print("\nTop smell labels:")
+                print(smell_counts.head(top_n))
+        else:
+            print("\nNo smell column found.")
+
+        # --- Fragment–Smell matrix ---
+        if hasattr(self, "frag_smell_df") and self.frag_smell_df is not None:
+            total_links = int(self.frag_smell_df.values.sum())
+            print(f"\nFragment–Smell matrix: {self.frag_smell_df.shape[0]} fragments × "
+                  f"{self.frag_smell_df.shape[1]} smells "
+                  f"({total_links:,} total fragment–smell links)")
+            # Show top fragments associated with most smells
+            frag_link_counts = (self.frag_smell_df > 0).sum(axis=1)
+            print("\nFragments associated with most smell classes:")
+            print(frag_link_counts.sort_values(ascending=False).head(top_n))
+
+        # --- Fragment–Fragment co-occurrence ---
+        if hasattr(self, "frag_co_matrix") and self.frag_co_matrix is not None:
+            n = self.frag_co_matrix.shape[0]
+            total_pairs = int(self.frag_co_matrix.values.sum() / 2)
+            print(f"\nFragment–Fragment co-occurrence matrix: {n}×{n}, "
+                  f"{total_pairs:,} total co-occurrence counts")
+            offdiag = self.frag_co_matrix.copy()
+            np.fill_diagonal(offdiag.values, 0)
+            top_pairs = (
+                offdiag.stack()
+                .sort_values(ascending=False)
+                .reset_index(name="count")
+                .head(top_n)
+            )
+            print("\nMost frequent fragment pairs:")
+            print(top_pairs)
+        else:
+            print("\nNo fragment–fragment co-occurrence matrix built yet.")
+
+        print("\n✅ Summary complete.\n")
 
     def plot_smell_clusters(
         self,
@@ -371,11 +801,14 @@ class SmellFragmentAnalyzer:
         self.load(data)
         self.build_fragment_smell_matrix(binary_frag_presence=binary_frag_presence, min_count=min_count)
         self.build_smell_cooccurrence()
+        self.build_fragment_cooccurrence()
         self.build_fragment_correlation(method=correlation_method)
         self.cluster_smells(n_clusters=n_clusters)
 
         if plot:
             self.plot_fragment_smell_heatmap()
             self.plot_smell_cooccurrence_heatmap()
+            self.plot_fragment_cooccurrence_heatmap()
             self.plot_fragment_correlation_heatmap()
             self.plot_smell_clusters()
+            self.print_summary_stats()

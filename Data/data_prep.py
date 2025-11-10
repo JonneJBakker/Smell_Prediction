@@ -19,17 +19,11 @@ def split_data(df, smiles_col):
 
     label_cols = [col for col in df.columns if col not in not_chosen_columns]
 
-    smiles_train, smiles_test, labels_train, labels_test = train_test_split(df['smiles'], df[label_cols], test_size=0.2, random_state=RANDOM_SEED)
-    smiles_val, smiles_test, labels_val, labels_test = train_test_split(smiles_test, labels_test, test_size=0.2, random_state=RANDOM_SEED)
+    train, test= train_test_split(df, test_size=0.2, random_state=RANDOM_SEED)
 
-    smiles_train.to_csv("Data/splits/smiles_train.csv", index=False)
-    smiles_test.to_csv("Data/splits/smiles_test.csv", index=False)
-    smiles_val.to_csv("Data/splits/smiles_val.csv", index=False)
-    labels_train.to_csv("Data/splits/labels_train.csv", index=False)
-    labels_test.to_csv("Data/splits/labels_test.csv", index=False)
-    labels_val.to_csv("Data/splits/labels_val.csv", index=False)
+    train.to_csv("Data/splits/train.csv", index=False)
+    test.to_csv("Data/splits/test.csv", index=False)
 
-    return smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test,  label_cols
 
 
 def valid_smiles(s: str) -> bool:
