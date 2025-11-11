@@ -4,12 +4,14 @@ from Data.analysis import SmellFragmentAnalyzer
 from Data.rdkit_pca import RDKitPCA
 from Data.structure_odor_visualizer import visualize_structure_odor
 from Data.data_prep import split_data
+from training.training import train_mlc
 from training.chemberta_to_ffn import FrozenChemBERTaMultiLabel
 
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
-    data = pd.read_csv(DATA_PATH)
-    split_data(data, "nonStereoSMILES")
+    #ata = pd.read_csv(DATA_PATH)
+    #split_data(data, "nonStereoSMILES")
+    train_mlc()
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
     #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")
     #visualize_data(data)
