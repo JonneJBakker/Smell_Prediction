@@ -13,15 +13,17 @@ RANDOM_SEED = 19237
 
 # %%
 def train_mlc():
-    train = pd.read_csv("Data/splits/train.csv")
-    test = pd.read_csv("Data/splits/test.csv")
-    target_cols = [col for col in train.columns if col not in ['smiles']]
+    train = pd.read_csv("Data/splits/train_stratified.csv")
+    test = pd.read_csv("Data/splits/test_stratified.csv")
+    val = pd.read_csv("Data/splits/val_stratified.csv")
+
+    target_cols = [col for col in train.columns if col not in ['nonStereoSMILES']]
     # Make an args parser
     smell_mlc_defaults = {
-        'train_csv': '../Data/splits/train.csv',
-        'test_csv': '../Data/splits/test.csv',
+        'train_csv': '../Data/splits/train_stratified.csv',
+        'test_csv': '../Data/splits/test_stratified.csv',
         'target_columns': target_cols,
-        'smiles_column': 'smiles',
+        'smiles_column': 'nonStereoSMILES',
         'output_dir': '../trained_models',
         'epochs': 20,
         'batch_size': 16,
@@ -37,5 +39,5 @@ def train_mlc():
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
 
     # %%
-    smell_mlc_results = train_chemberta_multilabel_model(smell_mlc_parser, train, test)
+    smell_mlc_results = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val)
     print(smell_mlc_results)

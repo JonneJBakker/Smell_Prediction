@@ -200,7 +200,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.5):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, device=None
+    args, df_train, df_test, df_val, device=None
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -227,10 +227,14 @@ def train_chemberta_multilabel_model(
     texts_test = df_test[smiles_col].tolist()
     targets_test = df_test[target_cols].values.astype(np.float32)
 
+    texts_val = df_val[smiles_col].tolist()
+    targets_val = df_val[target_cols].values.astype(np.float32)
+
     num_labels = targets_train.shape[1]
 
     train_dataset = ChembertaDataset(texts_train, targets_train, tokenizer)
     test_dataset = ChembertaDataset(texts_test, targets_test, tokenizer)
+    val_dataset = ChembertaDataset(texts_val, targets_val, tokenizer)
 
     # Calculate pos_weight
     pos_targets = df_train[target_cols].values
@@ -296,9 +300,9 @@ def train_chemberta_multilabel_model(
     print(f"Training completed in {training_time:.2f} seconds")
 
     print("\nEvaluating model on test set...")
-    metrics = trainer.evaluate(eval_dataset=test_dataset)
+    metrics = trainer.evaluate(eval_dataset=val_dataset)
 
-    predictions_output = trainer.predict(test_dataset)
+    predictions_output = trainer.predict(val_dataset)
     logits = predictions_output.predictions
     probs = 1 / (1 + np.exp(-logits))
     preds = (probs >= 0.5).astype(int)
