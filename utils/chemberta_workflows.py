@@ -166,49 +166,6 @@ class ChembertaDataset(Dataset):
         return item
 
 
-def get_compute_metrics_fn(scaler, target_column):
-    """
-    Returns a function that computes evaluation metrics based on model predictions.
-
-    Args:
-        scaler: Preprocessing scaler for inverse transforms
-        target_column: Name of the target column
-
-    Returns:
-        function: A function that computes evaluation metrics
-    """
-
-    def compute_metrics(eval_pred):
-        preds = eval_pred.predictions.squeeze(-1)
-        labels = eval_pred.label_ids
-
-        # Store normalized metrics (these are on the transformed/preprocessed data)
-        normalized_mae = mean_absolute_error(labels, preds)
-        normalized_mse = mean_squared_error(labels, preds)  # This is pure MSE without any L1 regularization
-        normalized_rmse = np.sqrt(normalized_mse)
-        normalized_r2 = r2_score(labels, preds)
-
-        original_preds = inverse_transform(preds, scaler)
-        original_labels = inverse_transform(labels, scaler)
-
-        mae = mean_absolute_error(original_labels, original_preds)
-        mse = mean_squared_error(original_labels, original_preds)
-        rmse = np.sqrt(mse)
-        r2 = r2_score(original_labels, original_preds)
-
-        return {
-            "normalized_mae": normalized_mae,
-            "normalized_mse": normalized_mse,
-            "normalized_rmse": normalized_rmse,
-            "normalized_r2": normalized_r2,
-            "mae": mae,
-            "mse": mse,
-            "rmse": rmse,
-            "r2": r2
-        }
-    
-    return compute_metrics
-
 def get_multilabel_compute_metrics_fn(threshold=0.5):
     """
     Returns a function to compute metrics for multi-label classification.
@@ -313,13 +270,13 @@ def train_chemberta_multilabel_model(
 
     compute_metrics = get_multilabel_compute_metrics_fn(threshold=0.5)
 
-    trainer = L1Trainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=test_dataset,
         compute_metrics=compute_metrics,
-        l1_lambda=args.l1_lambda,
+        #l1_lambda=args.l1_lambda,
     )
 
     print("\nTraining ChemBERTa multi-label model...")
