@@ -138,21 +138,16 @@ def randomize_smiles(smi, max_tries=20):
     return None
 
 
-def augment_train_csv(smiles_train_path, labels_train_csv_path, out_csv_path, smiles_col="smiles", k=5, percentile=80.0, keep_original=True):
+def augment_train_csv(train_path, out_csv_path, smiles_col="smiles", k=5, percentile=80.0, keep_original=True):
 
-    smiles_train = pd.read_csv(smiles_train_path)
-    labels_train = pd.read_csv(labels_train_csv_path)
-
-    df = pd.concat([smiles_train, labels_train], axis=1)
-
-    print(df)
+    df = pd.read_csv(train_path)
 
     label_cols = [c for c in df.columns if c != smiles_col]
 
     #check for rare labels
-    prevalences = labels_train.mean(axis=0)
+    prevalences = df[label_cols].mean(axis=0)
     cutoff = np.percentile(prevalences.values, percentile)
-    rare_labels = [c for c, p in prevalences.items() if p >= cutoff]
+    rare_labels = [c for c, p in prevalences.items() if p < cutoff]
     print(rare_labels)
 
     rows = []

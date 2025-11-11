@@ -13,7 +13,7 @@ RANDOM_SEED = 19237
 
 # %%
 def train_mlc():
-    train = pd.read_csv("Data/splits/train_stratified.csv")
+    train = pd.read_csv("Data/splits/augment_train.csv")
     test = pd.read_csv("Data/splits/test_stratified.csv")
     val = pd.read_csv("Data/splits/val_stratified.csv")
 
