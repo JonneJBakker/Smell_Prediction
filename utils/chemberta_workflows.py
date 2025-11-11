@@ -91,6 +91,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         dropout=0.3,
         hidden_channels=100,
         num_mlp_layers=1,
+        pos_weight=None,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -107,7 +108,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
-        self.loss_fct = nn.BCEWithLogitsLoss()
+        if pos_weight is not None:
+            self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        else:
+            self.loss_fct = nn.BCEWithLogitsLoss()
 
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
@@ -228,6 +232,14 @@ def train_chemberta_multilabel_model(
     train_dataset = ChembertaDataset(texts_train, targets_train, tokenizer)
     test_dataset = ChembertaDataset(texts_test, targets_test, tokenizer)
 
+    # Calculate pos_weight
+    pos_targets = df_train[target_cols].values
+    num_pos = (pos_targets == 1).sum(axis=0)
+    num_neg = (pos_targets == 0).sum(axis=0)
+
+    # Avoid division by zero
+    pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32)
+
     # Create model
     model = ChembertaMultiLabelClassifier(
         pretrained=DEFAULT_PRETRAINED_NAME,
@@ -235,6 +247,7 @@ def train_chemberta_multilabel_model(
         dropout=args.dropout,
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
+        pos_weight=pos_weight,
     )
 
     # Setup training arguments
@@ -262,7 +275,7 @@ def train_chemberta_multilabel_model(
         logging_strategy="epoch",
         logging_first_step=True,
         seed=args.random_seed,
-        report_to="none",
+        report_to=["tensorboard"],
     )
 
     compute_metrics = get_multilabel_compute_metrics_fn(threshold=0.5)
