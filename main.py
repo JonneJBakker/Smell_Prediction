@@ -1,5 +1,3 @@
-import pandas as pd
-from IPython.display import display
 from Data.analysis import SmellFragmentAnalyzer
 from Data.rdkit_pca import RDKitPCA
 from Data.structure_odor_visualizer import visualize_structure_odor
