@@ -69,6 +69,11 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
 
+        self.attention = nn.Sequential(
+            nn.Linear(self.roberta.config.hidden_size, 128),
+            nn.Tanh(),
+            nn.Linear(128, 1)  # scalar score per token
+        )
         # Output dimension = num_labels, one logit per label
         self.classifier = SimpleMLP(
             num_input_features,
@@ -83,15 +88,32 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, mean_pooling=True):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
-        if mean_pooling:
+        if strat == "mean_pooling":
             token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
             pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
             x = self.dropout(pooled)
 
-        else:
+        elif strat == "attention":
+            token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
+
+            # --- Attention pooling ---
+            # Compute unnormalized scores per token
+            attn_scores = self.attention(token_embs).squeeze(-1)  # (batch, seq_len)
+
+            # Mask out padding before softmax (so padding gets ~0 weight)
+            # attention_mask: (batch, seq_len), 1 for real tokens, 0 for pad
+            attn_scores = attn_scores.masked_fill(attention_mask == 0, float("-inf"))
+
+            # Normalize over the sequence
+            attn_weights = torch.softmax(attn_scores, dim=1)  # (batch, seq_len)
+
+            # Weighted sum: (B, 1, L) @ (B, L, H) -> (B, 1, H) -> (B, H)
+            pooled = torch.bmm(attn_weights.unsqueeze(1), token_embs).squeeze(1)  # (batch, hidden)
+            x = self.dropout(pooled)
+        elif strat == "cls":
             cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
             x = self.dropout(cls_emb)
 
