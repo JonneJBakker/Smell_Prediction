@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import torch
 from sklearn.metrics import (
-    mean_absolute_error, mean_squared_error, r2_score,
+    precision_score, recall_score, classification_report,
     accuracy_score, f1_score
 )
 from torch import nn
@@ -255,8 +255,9 @@ def train_chemberta_multilabel_model(
     )
 
     # Setup training arguments
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, dataset_name, "chemberta_multilabel")
+    output_dir = os.path.join(args.output_dir, dataset_name, timestamp, "chemberta_multilabel")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
@@ -301,6 +302,8 @@ def train_chemberta_multilabel_model(
 
     print("\nEvaluating model on test set...")
     metrics = trainer.evaluate(eval_dataset=val_dataset)
+
+    per_label_metrics = evaluate_per_label_metrics(trainer, val_dataset, target_cols, threshold=0.5)
 
     predictions_output = trainer.predict(val_dataset)
     logits = predictions_output.predictions
@@ -367,3 +370,60 @@ def train_chemberta_multilabel_model(
         json.dump(json_serializable_results, f, indent=2)
 
     return complete_results
+
+
+def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.5):
+    """
+    Evaluate per-label precision, recall, F1, and frequency for a multi-label model.
+
+    Args:
+        trainer: Hugging Face Trainer (or L1Trainer) object after training.
+        dataset: Dataset object (train/val/test) to evaluate on.
+        target_cols: List of label column names (order matters!).
+        threshold: Float, probability threshold for converting logits → binary predictions.
+        log_to_tensorboard: If True, logs per-label F1 to TensorBoard (default: False).
+
+    Returns:
+        pd.DataFrame with columns:
+        ['label', 'precision', 'recall', 'f1', 'support', 'frequency']
+    """
+
+    # Run prediction ----
+    pred_output = trainer.predict(dataset)
+    logits = pred_output.predictions
+    labels = pred_output.label_ids
+
+    # Convert logits → probabilities → binary predictions ----
+    probs = 1 / (1 + np.exp(-logits))
+    preds = (probs >= threshold).astype(int)
+
+    # Compute metrics per label ----
+    precisions = precision_score(labels, preds, average=None, zero_division=0)
+    recalls = recall_score(labels, preds, average=None, zero_division=0)
+    f1s = f1_score(labels, preds, average=None, zero_division=0)
+    supports = labels.sum(axis=0)
+    freqs = labels.mean(axis=0)
+
+    # Create dataframe
+    df_metrics = pd.DataFrame({
+        "label": target_cols,
+        "precision": precisions,
+        "recall": recalls,
+        "f1": f1s,
+        "support": supports,
+        "frequency": freqs,
+    }).sort_values("f1", ascending=False).reset_index(drop=True)
+
+
+    # Print summary
+    print("\nMacro F1:", np.round(f1_score(labels, preds, average="macro"), 3))
+    print("Micro F1:", np.round(f1_score(labels, preds, average="micro"), 3))
+    print("\nTop and bottom 5 labels by F1:")
+    print(df_metrics.head(5)[["label", "f1"]])
+    print(df_metrics.tail(5)[["label", "f1"]])
+
+    csv_path = f"{trainer.args.output_dir}/per_label_metrics.csv"
+    df_metrics.to_csv(csv_path, index=False)
+    print(f" Saved per-label metrics to {csv_path}")
+
+    return df_metrics

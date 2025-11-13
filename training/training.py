@@ -13,7 +13,7 @@ RANDOM_SEED = 19237
 
 # %%
 def train_mlc():
-    train = pd.read_csv("Data/splits/augment_train.csv")
+    train = pd.read_csv("Data/splits/train_stratified.csv")
     test = pd.read_csv("Data/splits/test_stratified.csv")
     val = pd.read_csv("Data/splits/val_stratified.csv")
 
@@ -25,7 +25,7 @@ def train_mlc():
         'target_columns': target_cols,
         'smiles_column': 'nonStereoSMILES',
         'output_dir': '../trained_models',
-        'epochs': 20,
+        'epochs': 1,
         'batch_size': 16,
         'lr': 0.001,
         'l1_lambda': 0.0,
