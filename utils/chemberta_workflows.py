@@ -58,7 +58,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
         hidden_channels=100,
         num_mlp_layers=1,
         pos_weight=None,
-        mean_pooling=True,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -84,10 +83,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, mean_pooling=True):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
-        if self.mean_pooling:
+        if mean_pooling:
             token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
             pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
             x = self.dropout(pooled)
