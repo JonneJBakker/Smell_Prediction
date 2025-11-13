@@ -812,3 +812,15 @@ class SmellFragmentAnalyzer:
             self.plot_fragment_correlation_heatmap()
             self.plot_smell_clusters()
             self.print_summary_stats()
+
+
+# %%
+def plot_per_label_metrics(datapath = "Data/Metrics/per_label_metrics.csv"):
+
+    df_metrics = pd.read_csv(datapath)
+    plt.scatter(df_metrics["frequency"], df_metrics["f1"])
+    plt.xlabel("Label frequency")
+    plt.ylabel("F1 score")
+    plt.title("Per-label F1 vs Prevalence")
+    plt.grid(True)
+    plt.show()
