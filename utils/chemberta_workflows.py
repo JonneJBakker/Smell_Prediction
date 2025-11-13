@@ -36,47 +36,13 @@ from models.simple_mlp import SimpleMLP
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
 
 
-class L1Trainer(Trainer):
-    """
-    Custom trainer that adds L1 regularization to the loss function.
-    """
-
-    def __init__(self, l1_lambda=0.0, **kwargs):
-        super().__init__(**kwargs)
-        self.l1_lambda = l1_lambda
-        self.regularized_losses = []  # Track regularized losses for plotting
-
-    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
-        outputs = model(**inputs)
-        raw_mse_loss = outputs.loss  # This is the raw MSE loss from the model
-
-        # For training, add L1 regularization
-        if self.training:
-            if self.l1_lambda > 0:
-                l1_norm = sum(p.abs().sum() for p in model.parameters())
-                regularized_loss = raw_mse_loss + self.l1_lambda * l1_norm
-
-                self.regularized_losses.append(regularized_loss.item())
-                loss = regularized_loss
-            else:
-                loss = raw_mse_loss
-                self.regularized_losses.append(raw_mse_loss.item())
-        else:
-            loss = raw_mse_loss
-
-        return (loss, outputs) if return_outputs else loss
-
-    def training(self):
-        """Check if the model is in training mode"""
-        return self.model.training if hasattr(self.model, "training") else True
-
-    def log(self, logs, *args, **kwargs):
-        """Override log method to include regularized loss in history"""
-        if self.model.training and self.regularized_losses:
-            logs["regularized_loss"] = self.regularized_losses[-1]
-        super().log(logs, *args, **kwargs)
-
-
+def mean_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    # hidden_states: (batch, seq_len, hidden)
+    # attention_mask: (batch, seq_len)
+    mask = attention_mask.unsqueeze(-1).type_as(hidden_states)  # (batch, seq_len, 1)
+    summed = (hidden_states * mask).sum(dim=1)                  # (batch, hidden)
+    denom = mask.sum(dim=1).clamp(min=1e-9)                     # avoid divide-by-zero
+    return summed / denom
 
 class ChembertaMultiLabelClassifier(nn.Module):
     """
@@ -92,6 +58,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         hidden_channels=100,
         num_mlp_layers=1,
         pos_weight=None,
+        mean_pooling=True,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -119,9 +86,15 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
-        cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
 
-        x = self.dropout(cls_emb)
+        if self.mean_pooling:
+            token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
+            pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
+            x = self.dropout(pooled)
+
+        else:
+            cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
+            x = self.dropout(cls_emb)
 
         # (batch_size, num_labels)
         logits = self.classifier(x)
