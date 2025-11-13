@@ -293,7 +293,7 @@ def train_chemberta_multilabel_model(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=test_dataset,
+        eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
         #l1_lambda=args.l1_lambda,
     )
@@ -305,9 +305,9 @@ def train_chemberta_multilabel_model(
     print(f"Training completed in {training_time:.2f} seconds")
 
     print("\nEvaluating model on test set...")
-    metrics = trainer.evaluate(eval_dataset=val_dataset)
+    metrics = trainer.evaluate(eval_dataset=test_dataset)
 
-    per_label_metrics = evaluate_per_label_metrics(trainer, val_dataset, target_cols, threshold=0.5)
+    per_label_metrics = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=0.5)
 
     predictions_output = trainer.predict(val_dataset)
     logits = predictions_output.predictions

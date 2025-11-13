@@ -25,7 +25,7 @@ def train_mlc():
         'target_columns': target_cols,
         'smiles_column': 'nonStereoSMILES',
         'output_dir': '../trained_models',
-        'epochs': 20,
+        'epochs': 30,
         'batch_size': 16,
         'lr': 0.001,
         'l1_lambda': 0.0,
