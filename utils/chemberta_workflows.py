@@ -63,8 +63,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
 
         #freeze language model
-        for param in self.roberta.parameters():
-             param.requires_grad = False
+        #for param in self.roberta.parameters():
+             #param.requires_grad = False
 
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
