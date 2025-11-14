@@ -185,11 +185,12 @@ def get_multilabel_compute_metrics_fn(threshold=0.5):
         probs = 1 / (1 + np.exp(-logits))
         preds = (probs >= threshold).astype(int)
 
+
         # Simple overall metrics
         # Flatten for micro metrics
         micro_accuracy = accuracy_score(labels, preds)
-        micro_f1 = f1_score(labels, preds, average="micro")
-        macro_f1 = f1_score(labels, preds, average="macro")
+        micro_f1 = f1_score(labels.astype(int), preds, average="micro")
+        macro_f1 = f1_score(labels.astype(int), preds, average="macro")
 
         return {
             "micro_accuracy": micro_accuracy,
