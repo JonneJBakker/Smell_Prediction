@@ -67,10 +67,11 @@ class ChembertaMultiLabelClassifier(nn.Module):
         for param in self.roberta.parameters():
              param.requires_grad = False
 
+        ''''
         self.query_vector = nn.Parameter(
             torch.randn(self.roberta.config.hidden_size)
         )
-
+        '''
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
 
@@ -88,7 +89,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
