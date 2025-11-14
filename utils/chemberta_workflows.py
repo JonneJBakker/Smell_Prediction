@@ -67,6 +67,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         for param in self.roberta.parameters():
              param.requires_grad = False
 
+        self.query_vector = nn.Parameter(
+            torch.randn(self.roberta.config.hidden_size)
+        )
+
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
 
@@ -84,7 +88,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
@@ -95,6 +99,20 @@ class ChembertaMultiLabelClassifier(nn.Module):
         elif strat == "cls":
             cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
             x = self.dropout(cls_emb)
+
+        elif strat == "attention":
+            token_embs = outputs.last_hidden_state  # [B, N, D]
+
+            # [B, N]
+            attn_scores = torch.matmul(token_embs, self.query_vector)
+
+            # [B, N, 1]
+            attn_weights = torch.softmax(attn_scores, dim=1).unsqueeze(-1)
+
+            # weighted sum → [B, D]
+            pooled = torch.sum(token_embs * attn_weights, dim=1)
+
+            x = self.dropout(pooled)
 
         # (batch_size, num_labels)
         logits = self.classifier(x)
