@@ -69,11 +69,14 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
 
+        ''''
         self.attention = nn.Sequential(
             nn.Linear(self.roberta.config.hidden_size, 128),
             nn.Tanh(),
             nn.Linear(128, 1)  # scalar score per token
         )
+        '''''
+
         # Output dimension = num_labels, one logit per label
         self.classifier = SimpleMLP(
             num_input_features,
@@ -88,7 +91,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="CLS"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
@@ -184,8 +187,8 @@ def get_multilabel_compute_metrics_fn(threshold=0.5):
 
         # Simple overall metrics
         # Flatten for micro metrics
-        micro_accuracy = accuracy_score(labels.flatten(), preds.flatten())
-        micro_f1 = f1_score(labels.flatten(), preds.flatten(), average="micro")
+        micro_accuracy = accuracy_score(labels, preds)
+        micro_f1 = f1_score(labels, preds, average="micro")
         macro_f1 = f1_score(labels, preds, average="macro")
 
         return {
@@ -287,7 +290,7 @@ def train_chemberta_multilabel_model(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        eval_dataset=test_dataset,
         compute_metrics=compute_metrics,
         #l1_lambda=args.l1_lambda,
     )
@@ -303,7 +306,7 @@ def train_chemberta_multilabel_model(
 
     per_label_metrics = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=0.5)
 
-    predictions_output = trainer.predict(val_dataset)
+    predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
     probs = 1 / (1 + np.exp(-logits))
     preds = (probs >= 0.5).astype(int)

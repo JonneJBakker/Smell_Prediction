@@ -12,9 +12,9 @@ import pandas as pd
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
-    #stratified_train_val_test_split(data, smiles_col='nonStereoSmiles', test_size=0.15, val_size=0.15)
+    stratified_train_val_test_split(data, smiles_col='nonStereoSmiles', test_size=0.1, val_size=0.1)
     #augment_train_csv('Data/splits/train_stratified.csv', smiles_col="nonStereoSMILES", out_csv_path=r'Data/splits/augment_train.csv')
-    train_mlc()
+    #train_mlc()
     #plot_per_label_metrics()
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
     #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")

@@ -100,15 +100,14 @@ def stratified_train_val_test_split(
     df_train = df_train_full.iloc[train_idx].reset_index(drop=True)
     df_val = df_train_full.iloc[val_idx].reset_index(drop=True)
 
-    # 5) Optional: quick sanity check of label frequencies
     print("Label means per split (per label):")
     print("  train:", df_train[target_cols].mean(numeric_only=True).to_dict())
     print("  val  :", df_val[target_cols].mean(numeric_only=True).to_dict())
     print("  test :", df_test[target_cols].mean(numeric_only=True).to_dict())
 
-    df_train.to_csv("Data/splits/train_stratified.csv", index=False)
-    df_val.to_csv("Data/splits/val_stratified.csv", index=False)
-    df_test.to_csv("Data/splits/test_stratified.csv", index=False)
+    df_train.to_csv("Data/splits/train_stratified80.csv", index=False)
+    df_val.to_csv("Data/splits/val_stratified10.csv", index=False)
+    df_test.to_csv("Data/splits/test_stratified10.csv", index=False)
 
 def valid_smiles(s: str) -> bool:
     if not isinstance(s, str): return False

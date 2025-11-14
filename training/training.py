@@ -13,19 +13,19 @@ RANDOM_SEED = 19237
 
 # %%
 def train_mlc():
-    train = pd.read_csv("Data/splits/train_stratified.csv")
-    test = pd.read_csv("Data/splits/test_stratified.csv")
-    val = pd.read_csv("Data/splits/val_stratified.csv")
+    train = pd.read_csv("Data/splits/train_stratified80.csv")
+    test = pd.read_csv("Data/splits/test_stratified10.csv")
+    val = pd.read_csv("Data/splits/val_stratified10.csv")
 
     target_cols = [col for col in train.columns if col not in ['nonStereoSMILES']]
     # Make an args parser
     smell_mlc_defaults = {
-        'train_csv': '../Data/splits/train_stratified.csv',
-        'test_csv': '../Data/splits/test_stratified.csv',
+        'train_csv': '../Data/splits/train_stratified80.csv',
+        'test_csv': '../Data/splits/test_stratified10.csv',
         'target_columns': target_cols,
         'smiles_column': 'nonStereoSMILES',
         'output_dir': '../trained_models',
-        'epochs': 20,
+        'epochs': 30,
         'batch_size': 16,
         'lr': 0.001,
         'l1_lambda': 0.0,
