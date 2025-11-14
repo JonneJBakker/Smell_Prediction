@@ -70,14 +70,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
 
-        ''''
-        self.attention = nn.Sequential(
-            nn.Linear(self.roberta.config.hidden_size, 128),
-            nn.Tanh(),
-            nn.Linear(128, 1)  # scalar score per token
-        )
-        '''''
-
         # Output dimension = num_labels, one logit per label
         self.classifier = SimpleMLP(
             num_input_features,
@@ -92,7 +84,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="cls"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
@@ -100,23 +92,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
             pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
             x = self.dropout(pooled)
 
-        elif strat == "attention":
-            token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
-
-            # --- Attention pooling ---
-            # Compute unnormalized scores per token
-            attn_scores = self.attention(token_embs).squeeze(-1)  # (batch, seq_len)
-
-            # Mask out padding before softmax (so padding gets ~0 weight)
-            # attention_mask: (batch, seq_len), 1 for real tokens, 0 for pad
-            attn_scores = attn_scores.masked_fill(attention_mask == 0, float("-inf"))
-
-            # Normalize over the sequence
-            attn_weights = torch.softmax(attn_scores, dim=1)  # (batch, seq_len)
-
-            # Weighted sum: (B, 1, L) @ (B, L, H) -> (B, 1, H) -> (B, H)
-            pooled = torch.bmm(attn_weights.unsqueeze(1), token_embs).squeeze(1)  # (batch, hidden)
-            x = self.dropout(pooled)
         elif strat == "cls":
             cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
             x = self.dropout(cls_emb)
@@ -227,7 +202,7 @@ def train_chemberta_multilabel_model(
     tokenizer = RobertaTokenizerFast.from_pretrained(DEFAULT_PRETRAINED_NAME)
 
     smiles_col = args.smiles_column
-    target_cols = args.target_columns  # <-- list of label columns
+    target_cols = args.target_columns
 
     # Create datasets
     texts_train = df_train[smiles_col].tolist()
@@ -250,7 +225,6 @@ def train_chemberta_multilabel_model(
     num_pos = (pos_targets == 1).sum(axis=0)
     num_neg = (pos_targets == 0).sum(axis=0)
 
-    # Avoid division by zero
     pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32)
 
     # Create model
