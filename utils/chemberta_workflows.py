@@ -90,7 +90,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
