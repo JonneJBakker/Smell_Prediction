@@ -17,7 +17,8 @@ import pandas as pd
 import torch
 from sklearn.metrics import (
     precision_score, recall_score, classification_report,
-    accuracy_score, f1_score
+    accuracy_score, f1_score, hamming_loss,
+    jaccard_score
 )
 from torch import nn
 from torch.utils.data import Dataset
@@ -189,13 +190,19 @@ def get_multilabel_compute_metrics_fn(threshold=0.5):
         # Simple overall metrics
         # Flatten for micro metrics
         micro_accuracy = accuracy_score(labels, preds)
-        micro_f1 = f1_score(labels.astype(int), preds, average="micro")
-        macro_f1 = f1_score(labels.astype(int), preds, average="macro")
+        micro_f1 = f1_score(labels.astype(int), preds, average="micro", zero_division=0)
+        macro_f1 = f1_score(labels.astype(int), preds, average="macro", zero_division=0)
+        samples_f1 = f1_score(labels, preds, average="samples", zero_division=0)
+        hamming = hamming_loss(labels, preds)
+        jaccard_samples = jaccard_score(labels, preds, average="samples", zero_division = 0)
 
         return {
             "micro_accuracy": micro_accuracy,
             "micro_f1": micro_f1,
             "macro_f1": macro_f1,
+            "samples_f1": samples_f1,
+            "hamming_loss": hamming,
+            "jaccard_samples": jaccard_samples,
         }
 
     return compute_metrics
