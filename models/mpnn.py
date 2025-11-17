@@ -7,6 +7,14 @@ from sklearn.metrics import f1_score
 import pandas as pd
 import numpy as np
 
+def f1_micro_dc(y_true, y_pred, **kwargs):
+    # y_true, y_pred are 1D arrays for a single task after DeepChem processing
+    return f1_score(y_true, y_pred, average="micro")
+
+
+def f1_macro_dc(y_true, y_pred, **kwargs):
+    return f1_score(y_true, y_pred, average="macro")
+
 def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     TASKS = [
     'alcoholic', 'aldehydic', 'alliaceous', 'almond', 'amber', 'animal',
@@ -87,12 +95,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         name="roc_auc_score"
     )
 
-
     metric_f1_micro = dc.metrics.Metric(
-        # y_pred will already be thresholded to 0/1 by DeepChem
-        lambda y_true, y_pred, w: f1_score(
-            y_true, y_pred, average="micro"
-        ),
+        f1_micro_dc,
         mode="classification",
         classification_handling_mode="threshold",
         threshold=0.5,
@@ -100,9 +104,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     )
 
     metric_f1_macro = dc.metrics.Metric(
-        lambda y_true, y_pred, w: f1_score(
-            y_true, y_pred, average="macro"
-        ),
+        f1_macro_dc,
         mode="classification",
         classification_handling_mode="threshold",
         threshold=0.5,
