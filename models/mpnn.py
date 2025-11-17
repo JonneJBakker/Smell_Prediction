@@ -87,25 +87,28 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         name="roc_auc_score"
     )
 
+
     metric_f1_micro = dc.metrics.Metric(
+        # y_pred will already be thresholded to 0/1 by DeepChem
         lambda y_true, y_pred, w: f1_score(
-            y_true,
-            (y_pred > 0.5).astype(int),
-            average="micro"
+            y_true, y_pred, average="micro"
         ),
         mode="classification",
+        classification_handling_mode="threshold",
+        threshold=0.5,
         name="f1_micro"
     )
 
     metric_f1_macro = dc.metrics.Metric(
         lambda y_true, y_pred, w: f1_score(
-            y_true,
-            (y_pred > 0.5).astype(int),
-            average="macro"
+            y_true, y_pred, average="macro"
         ),
         mode="classification",
+        classification_handling_mode="threshold",
+        threshold=0.5,
         name="f1_macro"
     )
+
 
     metrics = [metric_roc_auc, metric_f1_micro, metric_f1_macro]
 
