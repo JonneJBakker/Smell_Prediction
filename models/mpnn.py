@@ -51,9 +51,24 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     randomstratifiedsplitter = dc.splits.RandomStratifiedSplitter()
     train_dataset, test_dataset, valid_dataset = randomstratifiedsplitter.train_valid_test_split(dataset, frac_train = 0.8, frac_valid = 0.1, frac_test = 0.1, seed = 1)
 
-    train_dataset.to_csv("Data/splits/train_features.csv")
-    test_dataset.to_csv("Data/splits/test_features.csv")
-    valid_dataset.to_csv("Data/splits/valid_features.csv")
+    df_train = pd.DataFrame({
+        "X": list(train_dataset.X),  # may be arrays or featurized objects
+        "y": train_dataset.y.flatten(),  # labels
+        "w": train_dataset.w.flatten(),  # weights
+        "ids": train_dataset.ids
+    })
+
+    df_train.to_csv("Data/splits/train_features.csv", index=False)
+
+    df_test = pd.DataFrame({
+        "X": list(test_dataset.X), "y": test_dataset.y.flatten(), "w": test_dataset.w.flatten(), "ids": test_dataset.ids
+    })
+    df_test.to_csv("Data/splits/test_features.csv")
+
+    df_valid = pd.DataFrame({
+        "X": list(valid_dataset.X), "y": valid_dataset.y.flatten(),"w": valid_dataset.w.flatten(), "ids": valid_dataset.ids
+    })
+    df_valid.to_csv("Data/splits/valid_features.csv")
 
     train_ratios = get_class_imbalance_ratio(train_dataset)
     assert len(train_ratios) == n_tasks
