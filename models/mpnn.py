@@ -3,6 +3,7 @@ from openpom.feat.graph_featurizer import GraphFeaturizer, GraphConvConstants
 from openpom.utils.data_utils import get_class_imbalance_ratio, IterativeStratifiedSplitter
 from openpom.models.mpnn_pom import MPNNPOMModel
 from datetime import datetime
+from sklearn.metrics import f1_score
 import pandas as pd
 import numpy as np
 
@@ -87,18 +88,22 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     )
 
     metric_f1_micro = dc.metrics.Metric(
-        dc.metrics.f1_score,
+        lambda y_true, y_pred, w: f1_score(
+            y_true,
+            (y_pred > 0.5).astype(int),
+            average="micro"
+        ),
         mode="classification",
-        threshold=0.5,  # binarize predictions at 0.5
-        average="micro",  # micro F1 over all labels
         name="f1_micro"
     )
 
     metric_f1_macro = dc.metrics.Metric(
-        dc.metrics.f1_score,
+        lambda y_true, y_pred, w: f1_score(
+            y_true,
+            (y_pred > 0.5).astype(int),
+            average="macro"
+        ),
         mode="classification",
-        threshold=0.5,
-        average="macro",  # macro F1 over all labels
         name="f1_macro"
     )
 
