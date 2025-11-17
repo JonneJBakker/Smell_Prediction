@@ -51,14 +51,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     randomstratifiedsplitter = dc.splits.RandomStratifiedSplitter()
     train_dataset, test_dataset, valid_dataset = randomstratifiedsplitter.train_valid_test_split(dataset, frac_train = 0.8, frac_valid = 0.1, frac_test = 0.1, seed = 1)
 
-    df_train = pd.DataFrame({
-        "X": list(train_dataset.X),  # may be arrays or featurized objects
-        "y": train_dataset.y.flatten(),  # labels
-        "w": train_dataset.w.flatten(),  # weights
-        "ids": train_dataset.ids
-    })
-
-    df_train.to_csv("Data/splits/train_features.csv")
+    train_dataset.to_csv("Data/splits/train_features.csv")
     test_dataset.to_csv("Data/splits/test_features.csv")
     valid_dataset.to_csv("Data/splits/valid_features.csv")
 
