@@ -79,7 +79,30 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
                                 device_name='cuda')
 
     nb_epoch = 62
-    metric = dc.metrics.Metric(dc.metrics.roc_auc_score)
+
+    metric_roc_auc = dc.metrics.Metric(
+        dc.metrics.roc_auc_score,
+        mode="classification",
+        name="roc_auc_score"
+    )
+
+    metric_f1_micro = dc.metrics.Metric(
+        dc.metrics.f1_score,
+        mode="classification",
+        threshold=0.5,  # binarize predictions at 0.5
+        average="micro",  # micro F1 over all labels
+        name="f1_micro"
+    )
+
+    metric_f1_macro = dc.metrics.Metric(
+        dc.metrics.f1_score,
+        mode="classification",
+        threshold=0.5,
+        average="macro",  # macro F1 over all labels
+        name="f1_macro"
+    )
+
+    metrics = [metric_roc_auc, metric_f1_micro, metric_f1_macro]
 
     start_time = datetime.now()
     for epoch in range(1, nb_epoch+1):
@@ -89,12 +112,23 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
                   max_checkpoints_to_keep=1,
                   deterministic=False,
                   restore=epoch>1)
-            train_scores = model.evaluate(train_dataset, [metric])['roc_auc_score']
-            valid_scores = model.evaluate(valid_dataset, [metric])['roc_auc_score']
-            print(f"epoch {epoch}/{nb_epoch} ; loss = {loss}; train_scores = {train_scores}; valid_scores = {valid_scores}")
+            train_scores = model.evaluate(train_dataset, metrics)
+            valid_scores = model.evaluate(valid_dataset, metrics)
+
+            print(
+                f"epoch {epoch}/{nb_epoch} ; loss = {loss}; "
+                f"train_roc_auc = {train_scores['roc_auc_score']:.4f}; "
+                f"train_f1_micro = {train_scores['f1_micro']:.4f}; "
+                f"train_f1_macro = {train_scores['f1_macro']:.4f}; "
+                f"valid_roc_auc = {valid_scores['roc_auc_score']:.4f}; "
+                f"valid_f1_micro = {valid_scores['f1_micro']:.4f}; "
+                f"valid_f1_macro = {valid_scores['f1_macro']:.4f}"
+            )
     model.save_checkpoint()
     end_time = datetime.now()
 
-    test_scores = model.evaluate(test_dataset, [metric])['roc_auc_score']
-    print("time_taken: ", str(end_time-start_time))
-    print("test_score: ", test_scores)
+    test_scores = model.evaluate(test_dataset, metrics)
+    print("time_taken: ", str(end_time - start_time))
+    print("test_roc_auc: ", test_scores['roc_auc_score'])
+    print("test_f1_micro: ", test_scores['f1_micro'])
+    print("test_f1_macro: ", test_scores['f1_macro'])
