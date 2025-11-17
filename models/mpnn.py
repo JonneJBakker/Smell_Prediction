@@ -51,6 +51,10 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     randomstratifiedsplitter = dc.splits.RandomStratifiedSplitter()
     train_dataset, test_dataset, valid_dataset = randomstratifiedsplitter.train_valid_test_split(dataset, frac_train = 0.8, frac_valid = 0.1, frac_test = 0.1, seed = 1)
 
+    train_dataset.to_csv("Data/splits/train_features.csv", index=False)
+    test_dataset.to_csv("Data/splits/test_features.csv", index=False)
+    valid_dataset.to_csv("Data/splits/valid_features.csv", index=False)
+
     train_ratios = get_class_imbalance_ratio(train_dataset)
     assert len(train_ratios) == n_tasks
 
