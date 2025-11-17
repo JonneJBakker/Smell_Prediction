@@ -68,7 +68,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
         for param in self.roberta.parameters():
              param.requires_grad = False
 
-
         self.query_vector = nn.Parameter(
             torch.randn(self.roberta.config.hidden_size)
         )
