@@ -317,7 +317,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "A0.66G2")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "A0.75G1")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
