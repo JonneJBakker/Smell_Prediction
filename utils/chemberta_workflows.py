@@ -127,15 +127,9 @@ class ChembertaMultiLabelClassifier(nn.Module):
         )
 
 
-        # normalize around 1
-        alpha = pos_weight / pos_weight.mean()
-
-        # optional: clip extremes so they don’t explode
-        alpha = torch.clamp(alpha, 0.25, 5.0)
-
         self.loss_fct = FocalLoss(
-            alpha=None,  # optional, can also set to 1.0
-            gamma=3,  # typical value
+            alpha=pos_weight,
+            gamma=0.5,
             reduction="mean",
         )
 
@@ -297,12 +291,30 @@ def train_chemberta_multilabel_model(
     test_dataset = ChembertaDataset(texts_test, targets_test, tokenizer)
     val_dataset = ChembertaDataset(texts_val, targets_val, tokenizer)
 
+
+
     # Calculate pos_weight
     pos_targets = df_train[target_cols].values
+    """"
     num_pos = (pos_targets == 1).sum(axis=0)
     num_neg = (pos_targets == 0).sum(axis=0)
 
     pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32, device=device)
+    """
+    # 1) positive counts per label
+    num_pos = (pos_targets == 1).sum(axis=0)  # shape: [num_labels]
+
+    # 2) majority count
+    max_pos = num_pos.max()
+
+    # 3) IRLbl per label: majority / label frequency
+    irlbl = max_pos / np.maximum(num_pos, 1)  # avoid division by zero
+
+    # 4) log(1 + IRLbl) weights (Principal Odor Map style)
+    alpha_np = np.log1p(irlbl)  # log(1 + IRLbl)
+
+
+    pos_weight = torch.tensor(alpha_np, dtype=torch.float32)
 
     # Create model
     model = ChembertaMultiLabelClassifier(
@@ -317,7 +329,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G3")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "AposweightG0.5")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
