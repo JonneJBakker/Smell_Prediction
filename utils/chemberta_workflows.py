@@ -126,19 +126,19 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
-        '''''
+
         self.loss_fct = FocalLoss(
-            alpha=pos_weight,  # optional, can also set to 1.0
+            alpha=0,  # optional, can also set to 1.0
             gamma=2.0,  # typical value
             reduction="mean",
         )
-        '''
 
+        ''''
         if pos_weight is not None:
             self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
-
+        '''''
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
@@ -311,7 +311,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, dataset_name, timestamp, "chemberta_multilabel")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G2")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
