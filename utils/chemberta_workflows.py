@@ -37,6 +37,45 @@ from models.simple_mlp import SimpleMLP
 
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
 
+class FocalLoss(nn.Module):
+    """
+    Multi-label focal loss.
+    Args:
+        alpha: balancing factor (float or tensor of shape [num_labels])
+        gamma: focusing parameter
+        reduction: 'mean' or 'sum'
+    """
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        # BCE with logits
+        bce_loss = nn.functional.binary_cross_entropy_with_logits(
+            logits,
+            targets,
+            reduction="none",
+        )
+
+        # p_t = sigmoid(logit) if target=1, else 1-sigmoid(logit)
+        probs = torch.sigmoid(logits)
+        p_t = probs * targets + (1 - probs) * (1 - targets)
+
+        # focal weight
+        focal_weight = (1 - p_t) ** self.gamma
+
+        if self.alpha is not None:
+            focal_weight = self.alpha * focal_weight
+
+        loss = focal_weight * bce_loss
+
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss
 
 def mean_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     # hidden_states: (batch, seq_len, hidden)
@@ -68,9 +107,12 @@ class ChembertaMultiLabelClassifier(nn.Module):
         for param in self.roberta.parameters():
              param.requires_grad = False
 
+
+        '''' If we want attention pooling
         self.query_vector = nn.Parameter(
             torch.randn(self.roberta.config.hidden_size)
         )
+        '''''
 
         self.dropout = nn.Dropout(dropout)
         num_input_features = self.roberta.config.hidden_size
@@ -84,12 +126,19 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
+        self.loss_fct = FocalLoss(
+            alpha=pos_weight,  # optional, can also set to 1.0
+            gamma=2.0,  # typical value
+            reduction="mean",
+        )
+
+        ''''
         if pos_weight is not None:
             self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
-
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="attention"):
+        '''''
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "mean_pooling":
@@ -246,7 +295,7 @@ def train_chemberta_multilabel_model(
     num_pos = (pos_targets == 1).sum(axis=0)
     num_neg = (pos_targets == 0).sum(axis=0)
 
-    pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32)
+    pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32, device=device)
 
     # Create model
     model = ChembertaMultiLabelClassifier(

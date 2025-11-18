@@ -7,7 +7,7 @@ from training.chemberta_to_ffn import FrozenChemBERTaMultiLabel
 from Data.data_prep import stratified_train_val_test_split
 from Data.data_prep import augment_train_csv
 from Data.analysis import plot_per_label_metrics
-from models.mpnn import train_mpnn
+#from models.mpnn import train_mpnn
 import pandas as pd
 
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
@@ -15,8 +15,8 @@ if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
     #stratified_train_val_test_split(data, smiles_col='nonStereoSmiles', test_size=0.1, val_size=0.1)
     #augment_train_csv('Data/splits/train_stratified.csv', smiles_col="nonStereoSMILES", out_csv_path=r'Data/splits/augment_train.csv')
-    #train_mlc()
-    train_mpnn(DATA_PATH)
+    train_mlc()
+    #train_mpnn(DATA_PATH)
     #plot_per_label_metrics(datapath="Data/Metrics/per_label_metrics_attention.csv")
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
     #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")
