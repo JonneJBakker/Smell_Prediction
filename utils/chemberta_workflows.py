@@ -128,8 +128,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
 
         self.loss_fct = FocalLoss(
-            alpha=pos_weight,
-            gamma=0.5,
+            alpha=None,
+            gamma=2,
             reduction="mean",
         )
 

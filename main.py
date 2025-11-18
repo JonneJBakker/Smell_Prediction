@@ -15,7 +15,7 @@ if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
     #stratified_train_val_test_split(data, smiles_col='nonStereoSmiles', test_size=0.1, val_size=0.1)
     #augment_train_csv('Data/splits/train_stratified.csv', smiles_col="nonStereoSMILES", out_csv_path=r'Data/splits/augment_train.csv')
-    thresholds = [0.1, 0.15, 0.2, 0.25, 0.3]
+    thresholds = [0.2, 0.25, 0.3]
     best_f1 = 0
     for threshold in thresholds:
         f1_macro = train_mlc(threshold)
