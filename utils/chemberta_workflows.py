@@ -134,7 +134,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         alpha = torch.clamp(alpha, 0.25, 5.0)
 
         self.loss_fct = FocalLoss(
-            alpha=0.5,  # optional, can also set to 1.0
+            alpha=0.75,  # optional, can also set to 1.0
             gamma=2.0,  # typical value
             reduction="mean",
         )
@@ -317,7 +317,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "A0.5_clampedG2")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "A0.0.75G2")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
@@ -349,7 +349,7 @@ def train_chemberta_multilabel_model(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=test_dataset,
+        eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
         #l1_lambda=args.l1_lambda,
     )
@@ -463,6 +463,7 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.5):
     f1s = f1_score(labels, preds, average=None, zero_division=0)
     supports = labels.sum(axis=0)
     freqs = labels.mean(axis=0)
+    auroc = roc_auc_score(labels, probs, multi_class="ovr", average="macro")
 
     # Create dataframe
     df_metrics = pd.DataFrame({
@@ -476,6 +477,7 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.5):
 
 
     # Print summary
+    print(f"AUROC: {auroc}")
     print("\nMacro F1:", np.round(f1_score(labels, preds, average="macro"), 3))
     print("Micro F1:", np.round(f1_score(labels, preds, average="micro"), 3))
     print("\nTop and bottom 5 labels by F1:")
