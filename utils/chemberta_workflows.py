@@ -103,10 +103,12 @@ class ChembertaMultiLabelClassifier(nn.Module):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
 
+
+        """
         #freeze language model
         for param in self.roberta.parameters():
              param.requires_grad = False
-
+        """
 
         '''' If we want attention pooling
         self.query_vector = nn.Parameter(
@@ -128,8 +130,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
 
         self.loss_fct = FocalLoss(
-            alpha=None,
-            gamma=2,
+            alpha=pos_weight,
+            gamma=0.5,
             reduction="mean",
         )
 
@@ -329,7 +331,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "AposweightG0.5")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "AposweightG0.5_unforzenLLM")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
