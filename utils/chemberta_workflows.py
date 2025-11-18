@@ -213,7 +213,7 @@ class ChembertaDataset(Dataset):
         return item
 
 
-def get_multilabel_compute_metrics_fn(threshold=0.5):
+def get_multilabel_compute_metrics_fn(threshold=0.3):
     """
     Returns a function to compute metrics for multi-label classification.
 
@@ -355,7 +355,7 @@ def train_chemberta_multilabel_model(
         report_to=["tensorboard"],
     )
 
-    compute_metrics = get_multilabel_compute_metrics_fn(threshold=0.5)
+    compute_metrics = get_multilabel_compute_metrics_fn(threshold=0.3)
 
     trainer = Trainer(
         model=model,
@@ -375,7 +375,7 @@ def train_chemberta_multilabel_model(
     print("\nEvaluating model on test set...")
     metrics = trainer.evaluate(eval_dataset=test_dataset)
 
-    per_label_metrics = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=0.5)
+    per_label_metrics = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=0.3)
 
     predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
@@ -444,7 +444,7 @@ def train_chemberta_multilabel_model(
     return complete_results
 
 
-def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.5):
+def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     """
     Evaluate per-label precision, recall, F1, and frequency for a multi-label model.
 
