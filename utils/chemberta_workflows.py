@@ -314,7 +314,7 @@ def train_chemberta_multilabel_model(
     alpha_np = np.log1p(irlbl)  # log(1 + IRLbl)
 
 
-    pos_weight = torch.tensor(alpha_np, dtype=torch.float32)
+    pos_weight = torch.tensor(alpha_np, dtype=torch.float32, device=device)
 
     # Create model
     model = ChembertaMultiLabelClassifier(
