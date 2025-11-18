@@ -5,7 +5,7 @@
 
 import pandas as pd
 import argparse
-from utils.normalizing import normalize_csv
+#from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
 # %%
 RANDOM_SEED = 19237
