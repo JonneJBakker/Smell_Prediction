@@ -135,7 +135,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         self.loss_fct = FocalLoss(
             alpha=None,  # optional, can also set to 1.0
-            gamma=2,  # typical value
+            gamma=3,  # typical value
             reduction="mean",
         )
 
@@ -317,7 +317,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G2")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G3")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
