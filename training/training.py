@@ -39,6 +39,6 @@ def train_mlc(threshold):
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
 
     # %%
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=threshold)
     print(smell_mlc_results)
     return f1_macro
