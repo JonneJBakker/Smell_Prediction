@@ -12,7 +12,7 @@ RANDOM_SEED = 19237
 # %%
 
 # %%
-def train_mlc():
+def train_mlc(threshold):
     train = pd.read_csv("Data/splits/train_stratified80.csv")
     test = pd.read_csv("Data/splits/test_stratified10.csv")
     val = pd.read_csv("Data/splits/val_stratified10.csv")
@@ -39,5 +39,6 @@ def train_mlc():
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
 
     # %%
-    smell_mlc_results = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold)
     print(smell_mlc_results)
+    return f1_macro

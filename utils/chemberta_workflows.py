@@ -255,7 +255,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, df_val, device=None
+    args, df_train, df_test, df_val, device=None, threshold=0.3
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -355,7 +355,7 @@ def train_chemberta_multilabel_model(
         report_to=["tensorboard"],
     )
 
-    compute_metrics = get_multilabel_compute_metrics_fn(threshold=0.3)
+    compute_metrics = get_multilabel_compute_metrics_fn(threshold=threshold)
 
     trainer = Trainer(
         model=model,
@@ -375,7 +375,7 @@ def train_chemberta_multilabel_model(
     print("\nEvaluating model on test set...")
     metrics = trainer.evaluate(eval_dataset=test_dataset)
 
-    per_label_metrics = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=0.3)
+    f1_macro = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=threshold)
 
     predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
@@ -441,7 +441,7 @@ def train_chemberta_multilabel_model(
     with open(complete_results_path, "w") as f:
         json.dump(json_serializable_results, f, indent=2)
 
-    return complete_results
+    return complete_results, f1_macro
 
 
 def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
@@ -506,4 +506,4 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     df_metrics.to_csv(csv_path, index=False)
     print(f" Saved per-label metrics to {csv_path}")
 
-    return df_metrics
+    return np.round(f1_score(labels, preds, average="macro"), 3)
