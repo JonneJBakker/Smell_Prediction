@@ -134,8 +134,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
         alpha = torch.clamp(alpha, 0.25, 5.0)
 
         self.loss_fct = FocalLoss(
-            alpha=0.66,  # optional, can also set to 1.0
-            gamma=2.0,  # typical value
+            alpha=0.75,  # optional, can also set to 1.0
+            gamma=1,  # typical value
             reduction="mean",
         )
 
