@@ -126,18 +126,19 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
+        '''''
         self.loss_fct = FocalLoss(
             alpha=pos_weight,  # optional, can also set to 1.0
             gamma=2.0,  # typical value
             reduction="mean",
         )
+        '''
 
-        ''''
         if pos_weight is not None:
             self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
-        '''''
+
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
