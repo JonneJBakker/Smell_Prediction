@@ -135,7 +135,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         self.loss_fct = FocalLoss(
             alpha=None,  # optional, can also set to 1.0
-            gamma=1,  # typical value
+            gamma=2,  # typical value
             reduction="mean",
         )
 
@@ -317,7 +317,7 @@ def train_chemberta_multilabel_model(
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
-    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G1")
+    output_dir = os.path.join(args.output_dir, "focal_loss", "A0G2")
     os.makedirs(output_dir, exist_ok=True)
 
     evaluation_strategy = "epoch"
@@ -456,6 +456,12 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.5):
     # Convert logits → probabilities → binary predictions ----
     probs = 1 / (1 + np.exp(-logits))
     preds = (probs >= threshold).astype(int)
+
+    preds_per_label = preds.sum(axis=0)  # number of predicted positives per label
+    true_per_label = labels.sum(axis=0)  # number of actual positives per label
+
+    print("Predicted positives per label:", preds_per_label)
+    print("True positives per label:", true_per_label)
 
     # Compute metrics per label ----
     precisions = precision_score(labels, preds, average=None, zero_division=0)
