@@ -178,8 +178,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     print("\n=== Per-label metrics (MPNN, threshold = {:.2f}) ===".format(threshold))
     print(df_metrics.head(10))
     print(df_metrics.tail(10))
-    csv_path = "../Data/Metrics/mpnn_per_label_metrics.csv"
-    output_dir = os.path.join(csv_path)
+    output_dir = "../Data/Metrics/"
     os.makedirs(output_dir, exist_ok=True)
+    csv_path = os.path.join(output_dir, "mpnn_per_label_metrics.csv")
     df_metrics.to_csv(csv_path, index=False)
     print(f"\nSaved per-label metrics to: {csv_path}")
