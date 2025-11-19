@@ -131,6 +131,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         f1_micro_global,
         mode="classification",
         name="f1_micro",
+        classification_handling_mode="threshold",  # REQUIRED for custom metrics
+        threshold=0.5,
         # we are already returning a single scalar; don't re-average per task
         task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
     )
@@ -139,6 +141,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         f1_macro_global,
         mode="classification",
         name="f1_macro",
+        classification_handling_mode="threshold",  # REQUIRED for custom metrics
+        threshold=0.5,
         task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
     )
 
