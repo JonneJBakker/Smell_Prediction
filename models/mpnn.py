@@ -9,7 +9,10 @@ from sklearn.metrics import (
     hamming_loss,
     jaccard_score,
     roc_auc_score,
+    precision_score,
+    recall_score,
 )
+import pandas as pd
 
 def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     TASKS = [
@@ -151,3 +154,29 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     print(f"  samples_f1:     {samples_f1:.4f}")
     print(f"  hamming_loss:   {hamming:.4f}")
     print(f"  jaccard_samp:   {jaccard_samples:.4f}")
+
+    # List of label/odor names (same order as dataset.columns)
+    target_cols = TASKS  # tasks already defined in your train_mpnn file
+
+    # Per-label metrics
+    precisions = precision_score(y_true, y_pred, average=None, zero_division=0)
+    recalls = recall_score(y_true, y_pred, average=None, zero_division=0)
+    f1s = f1_score(y_true, y_pred, average=None, zero_division=0)
+    supports = y_true.sum(axis=0)
+    freqs = y_true.mean(axis=0)
+
+    df_metrics = pd.DataFrame({
+        "label": target_cols,
+        "precision": precisions,
+        "recall": recalls,
+        "f1": f1s,
+        "support": supports,
+        "frequency": freqs,
+    }).sort_values("f1", ascending=False).reset_index(drop=True)
+
+    print("\n=== Per-label metrics (MPNN, threshold = {:.2f}) ===".format(threshold))
+    print(df_metrics.head(10))
+    print(df_metrics.tail(10))
+    csv_path = "Data/Metrics/mpnn_per_label_metrics.csv"
+    df_metrics.to_csv(csv_path, index=False)
+    print(f"\nSaved per-label metrics to: {csv_path}")
