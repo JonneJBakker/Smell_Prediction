@@ -24,7 +24,7 @@ if __name__ == "__main__":
             best_f1_gamma = gamma
 
     print("Best F1-score gamma:", best_f1_gamma)
-    print("Best F1-score:", f1_macro)
+    print("Best F1-score:", best_f1)
     #train_mpnn(DATA_PATH)
     #plot_per_label_metrics(datapath="Data/Metrics/per_label_metrics_unfrozen_0.25.csv")
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
