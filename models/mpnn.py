@@ -7,13 +7,45 @@ from sklearn.metrics import f1_score
 import pandas as pd
 import numpy as np
 
-def f1_micro_dc(y_true, y_pred, **kwargs):
-    # y_true, y_pred are 1D arrays for a single task after DeepChem processing
-    return f1_score(y_true, y_pred, average="micro")
+
+def f1_micro_global(y_true, y_pred, w):
+    """
+    Multi-label micro-F1 over *all* samples and labels.
+
+    DeepChem passes y_true, y_pred, w with shape (n_samples, n_tasks, 1)
+    or (n_samples, n_tasks). We flatten and ignore w (assuming all ones).
+    """
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # Drop last dim if present: (N, T, 1) -> (N, T)
+    if y_true.ndim == 3:
+        y_true = y_true[:, :, 0]
+        y_pred = y_pred[:, :, 0]
+
+    # Flatten to (N * T,)
+    y_true_flat = y_true.reshape(-1)
+    y_pred_flat = y_pred.reshape(-1)
+
+    return f1_score(y_true_flat, y_pred_flat, average="micro", zero_division=0)
 
 
-def f1_macro_dc(y_true, y_pred, **kwargs):
-    return f1_score(y_true, y_pred, average="macro")
+def f1_macro_global(y_true, y_pred, w):
+    """
+    Multi-label macro-F1 across labels (tasks).
+
+    Shapes as above; we reshape to (N, T) and let sklearn treat T as labels.
+    """
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    if y_true.ndim == 3:
+        y_true = y_true[:, :, 0]
+        y_pred = y_pred[:, :, 0]
+
+    # y_true, y_pred now (N, T)
+    return f1_score(y_true, y_pred, average="macro", zero_division=0)
+
 
 def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     TASKS = [
@@ -95,26 +127,21 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
 
     metric_roc_auc = dc.metrics.Metric(
         dc.metrics.roc_auc_score,
-        mode="classification",
-        name="roc_auc_score"
+        name="roc_auc_score",
     )
 
     metric_f1_micro = dc.metrics.Metric(
-        f1_micro_dc,
-        mode="classification",
-        classification_handling_mode="threshold",
-        threshold=0.5,
-        name="f1_micro"
+        f1_micro_global,
+        name="f1_micro",
+        # we are already returning a single scalar; don't re-average per task
+        task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
     )
 
     metric_f1_macro = dc.metrics.Metric(
-        f1_macro_dc,
-        mode="classification",
-        classification_handling_mode="threshold",
-        threshold=0.5,
-        name="f1_macro"
+        f1_macro_global,
+        name="f1_macro",
+        task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
     )
-
 
     metrics = [metric_roc_auc, metric_f1_micro, metric_f1_macro]
 
