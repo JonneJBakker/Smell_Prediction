@@ -123,11 +123,13 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
 
     metric_roc_auc = dc.metrics.Metric(
         dc.metrics.roc_auc_score,
+        mode="classification",
         name="roc_auc_score",
     )
 
     metric_f1_micro = dc.metrics.Metric(
         f1_micro_global,
+        mode="classification",
         name="f1_micro",
         # we are already returning a single scalar; don't re-average per task
         task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
@@ -135,6 +137,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
 
     metric_f1_macro = dc.metrics.Metric(
         f1_macro_global,
+        mode="classification",
         name="f1_macro",
         task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
     )
