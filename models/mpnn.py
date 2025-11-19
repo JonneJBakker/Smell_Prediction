@@ -3,6 +3,7 @@ from openpom.feat.graph_featurizer import GraphFeaturizer, GraphConvConstants
 from openpom.utils.data_utils import get_class_imbalance_ratio, IterativeStratifiedSplitter
 from openpom.models.mpnn_pom import MPNNPOMModel
 from datetime import datetime
+import os
 from sklearn.metrics import (
     f1_score,
     accuracy_score,
@@ -177,6 +178,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     print("\n=== Per-label metrics (MPNN, threshold = {:.2f}) ===".format(threshold))
     print(df_metrics.head(10))
     print(df_metrics.tail(10))
-    csv_path = "Data/Metrics/mpnn_per_label_metrics.csv"
+    csv_path = "../Data/Metrics/mpnn_per_label_metrics.csv"
+    output_dir = os.path.join(csv_path)
+    os.makedirs(output_dir, exist_ok=True)
     df_metrics.to_csv(csv_path, index=False)
     print(f"\nSaved per-label metrics to: {csv_path}")
