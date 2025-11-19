@@ -15,18 +15,18 @@ if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
     #stratified_train_val_test_split(data, smiles_col='nonStereoSmiles', test_size=0.1, val_size=0.1)
     #augment_train_csv('Data/splits/train_stratified.csv', smiles_col="nonStereoSMILES", out_csv_path=r'Data/splits/augment_train.csv')
-    thresholds = [0.20, 0.25, 0.30, 0.35, 0.40]
+    gammas = [0.5, 0.75, 1, 1.5, 2]
     best_f1 = 0
-    for threshold in thresholds:
-        f1_macro = train_mlc(threshold)
+    for gamma in gammas:
+        f1_macro = train_mlc(gamma = gamma)
         if f1_macro > best_f1:
             best_f1 = f1_macro
-            best_f1_threshold = threshold
+            best_f1_gamma = gamma
 
-    print("Best F1-score threshold:", best_f1_threshold)
+    print("Best F1-score gamma:", best_f1_gamma)
     print("Best F1-score:", f1_macro)
     #train_mpnn(DATA_PATH)
-    #plot_per_label_metrics(datapath="Data/Metrics/focal_loss_60epoch.csv")
+    #plot_per_label_metrics(datapath="Data/Metrics/per_label_metrics_unfrozen_0.25.csv")
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
     #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")
     #visualize_data(data)

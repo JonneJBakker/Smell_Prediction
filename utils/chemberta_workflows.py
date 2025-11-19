@@ -99,16 +99,17 @@ class ChembertaMultiLabelClassifier(nn.Module):
         hidden_channels=100,
         num_mlp_layers=1,
         pos_weight=None,
+        gamma = 1,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
 
 
-        """
+
         #freeze language model
         for param in self.roberta.parameters():
              param.requires_grad = False
-        """
+
 
         '''' If we want attention pooling
         self.query_vector = nn.Parameter(
@@ -131,7 +132,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         self.loss_fct = FocalLoss(
             alpha=pos_weight,
-            gamma=0.5,
+            gamma=gamma,
             reduction="mean",
         )
 
@@ -257,7 +258,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, df_val, device=None, threshold=0.3
+    args, df_train, df_test, df_val, device=None, threshold=0.25, gamma = 1
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -326,6 +327,7 @@ def train_chemberta_multilabel_model(
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
         pos_weight=pos_weight,
+        gamma = gamma,
     )
 
     # Setup training arguments
