@@ -3,49 +3,13 @@ from openpom.feat.graph_featurizer import GraphFeaturizer, GraphConvConstants
 from openpom.utils.data_utils import get_class_imbalance_ratio, IterativeStratifiedSplitter
 from openpom.models.mpnn_pom import MPNNPOMModel
 from datetime import datetime
-from sklearn.metrics import f1_score
-import pandas as pd
-import numpy as np
-
-
-def f1_micro_global(y_true, y_pred, w):
-    """
-    Multi-label micro-F1 over *all* samples and labels.
-
-    DeepChem passes y_true, y_pred, w with shape (n_samples, n_tasks, 1)
-    or (n_samples, n_tasks). We flatten and ignore w (assuming all ones).
-    """
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-
-    # Drop last dim if present: (N, T, 1) -> (N, T)
-    if y_true.ndim == 3:
-        y_true = y_true[:, :, 0]
-        y_pred = y_pred[:, :, 0]
-
-    # Flatten to (N * T,)
-    y_true_flat = y_true.reshape(-1)
-    y_pred_flat = y_pred.reshape(-1)
-
-    return f1_score(y_true_flat, y_pred_flat, average="micro", zero_division=0)
-
-
-def f1_macro_global(y_true, y_pred, w):
-    """
-    Multi-label macro-F1 across labels (tasks).
-
-    Shapes as above; we reshape to (N, T) and let sklearn treat T as labels.
-    """
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-
-    if y_true.ndim == 3:
-        y_true = y_true[:, :, 0]
-        y_pred = y_pred[:, :, 0]
-
-    # y_true, y_pred now (N, T)
-    return f1_score(y_true, y_pred, average="macro", zero_division=0)
-
+from sklearn.metrics import (
+    f1_score,
+    accuracy_score,
+    hamming_loss,
+    jaccard_score,
+    roc_auc_score,
+)
 
 def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     TASKS = [
@@ -127,26 +91,8 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         name="roc_auc_score",
     )
 
-    metric_f1_micro = dc.metrics.Metric(
-        f1_micro_global,
-        mode="classification",
-        name="f1_micro",
-        classification_handling_mode="threshold",  # REQUIRED for custom metrics
-        threshold=0.5,
-        # we are already returning a single scalar; don't re-average per task
-        task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
-    )
 
-    metric_f1_macro = dc.metrics.Metric(
-        f1_macro_global,
-        mode="classification",
-        name="f1_macro",
-        classification_handling_mode="threshold",  # REQUIRED for custom metrics
-        threshold=0.5,
-        task_averager=lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x,
-    )
-
-    metrics = [metric_roc_auc, metric_f1_micro, metric_f1_macro]
+    metrics = [metric_roc_auc]
 
     start_time = datetime.now()
     for epoch in range(1, nb_epoch+1):
@@ -162,11 +108,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
             print(
                 f"epoch {epoch}/{nb_epoch} ; loss = {loss}; "
                 f"train_roc_auc = {train_scores['roc_auc_score']:.4f}; "
-                f"train_f1_micro = {train_scores['f1_micro']:.4f}; "
-                f"train_f1_macro = {train_scores['f1_macro']:.4f}; "
                 f"valid_roc_auc = {valid_scores['roc_auc_score']:.4f}; "
-                f"valid_f1_micro = {valid_scores['f1_micro']:.4f}; "
-                f"valid_f1_macro = {valid_scores['f1_macro']:.4f}"
             )
     model.save_checkpoint()
     end_time = datetime.now()
@@ -174,5 +116,38 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     test_scores = model.evaluate(test_dataset, metrics)
     print("time_taken: ", str(end_time - start_time))
     print("test_roc_auc: ", test_scores['roc_auc_score'])
-    print("test_f1_micro: ", test_scores['f1_micro'])
-    print("test_f1_macro: ", test_scores['f1_macro'])
+
+    # DeepChem dataset labels: shape (N, T)
+    y_true = test_dataset.y.astype(int)
+
+    # Get model predictions on test set
+    preds_ds = model.predict(test_dataset)
+    # For DeepChem models, predictions are usually stored in .y
+    if hasattr(preds_ds, "y"):
+        y_prob = preds_ds.y  # shape (N, T)
+    else:
+        y_prob = preds_ds  # fallback, if it’s already a raw array
+
+    # Use the SAME threshold as ChemBERTa
+    threshold = 0.25  # or 0.25 if you want to match your trainer/eval
+
+    y_pred = (y_prob >= threshold).astype(int)
+
+    # --- ChemBERTa-style metrics (same as in chemberta_workflows.py) ---
+
+    micro_accuracy = accuracy_score(y_true, y_pred)
+    auroc_macro = roc_auc_score(y_true, y_prob, average="macro")
+    micro_f1 = f1_score(y_true, y_pred, average="micro", zero_division=0)
+    macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
+    samples_f1 = f1_score(y_true, y_pred, average="samples", zero_division=0)
+    hamming = hamming_loss(y_true, y_pred)
+    jaccard_samples = jaccard_score(y_true, y_pred, average="samples", zero_division=0)
+
+    print("\nChemBERTa-style multi-label metrics on MPNN:")
+    print(f"  micro_accuracy: {micro_accuracy:.4f}")
+    print(f"  macro_auroc:    {auroc_macro:.4f}")
+    print(f"  micro_f1:       {micro_f1:.4f}")
+    print(f"  macro_f1:       {macro_f1:.4f}")
+    print(f"  samples_f1:     {samples_f1:.4f}")
+    print(f"  hamming_loss:   {hamming:.4f}")
+    print(f"  jaccard_samp:   {jaccard_samples:.4f}")
