@@ -815,7 +815,7 @@ class SmellFragmentAnalyzer:
 
 
 # %%
-def plot_per_label_metrics(datapath = "Data/Metrics/per_label_metrics.csv"):
+def plot_per_label_metrics(datapath = "Data/Metrics/alpha=1.gamma=0.75.csv"):
 
     df_metrics = pd.read_csv(datapath)
     plt.scatter(df_metrics["frequency"], df_metrics["f1"])

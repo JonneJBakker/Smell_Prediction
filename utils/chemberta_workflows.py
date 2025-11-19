@@ -99,7 +99,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
         hidden_channels=100,
         num_mlp_layers=1,
         pos_weight=None,
-        gamma = 1,
+        gamma = 0.75,
+        alpha = None,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -131,7 +132,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
 
         self.loss_fct = FocalLoss(
-            alpha=None,
+            alpha=alpha,
             gamma=gamma,
             reduction="mean",
         )
@@ -258,7 +259,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, df_val, device=None, threshold=0.25, gamma = 1
+    args, df_train, df_test, df_val, device=None, threshold=0.25, gamma = 1, alpha = None
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -328,6 +329,7 @@ def train_chemberta_multilabel_model(
         num_mlp_layers=args.num_mlp_layers,
         pos_weight=pos_weight,
         gamma = gamma,
+        alpha = alpha,
     )
 
     # Setup training arguments
