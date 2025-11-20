@@ -105,9 +105,9 @@ def stratified_train_val_test_split(
     print("  val  :", df_val[target_cols].mean(numeric_only=True).to_dict())
     print("  test :", df_test[target_cols].mean(numeric_only=True).to_dict())
 
-    df_train.to_csv("Data/splits/train_stratified80.csv", index=False)
-    df_val.to_csv("Data/splits/val_stratified10.csv", index=False)
-    df_test.to_csv("Data/splits/test_stratified10.csv", index=False)
+    df_train.to_csv("Data/splits/int_train_stratified80.csv", index=False)
+    df_val.to_csv("Data/splits/int_val_stratified10.csv", index=False)
+    df_test.to_csv("Data/splits/int_test_stratified10.csv", index=False)
 
 def valid_smiles(s: str) -> bool:
     if not isinstance(s, str): return False

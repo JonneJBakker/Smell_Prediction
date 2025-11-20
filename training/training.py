@@ -13,18 +13,18 @@ RANDOM_SEED = 19237
 
 # %%
 def train_mlc(threshold = 0.25, gamma = 0.75, alpha = None):
-    train = pd.read_csv("Data/splits/train_stratified80.csv")
-    test = pd.read_csv("Data/splits/test_stratified10.csv")
-    val = pd.read_csv("Data/splits/val_stratified10.csv")
+    train = pd.read_csv("Data/splits/int_train_stratified80.csv")
+    test = pd.read_csv("Data/splits/int_test_stratified10.csv")
+    val = pd.read_csv("Data/splits/int_val_stratified10.csv")
 
-    target_cols = [col for col in train.columns if col not in ['nonStereoSMILES']]
+    target_cols = [col for col in train.columns if col not in ['SMILES']]
     # Make an args parser
     smell_mlc_defaults = {
-        'train_csv': '../Data/splits/train_stratified80.csv',
-        'test_csv': '../Data/splits/test_stratified10.csv',
+        'train_csv': '../Data/splits/int_train_stratified80.csv',
+        'test_csv': '../Data/splits/int_test_stratified10.csv',
         'target_columns': target_cols,
-        'smiles_column': 'nonStereoSMILES',
-        'output_dir': f'../trained_models/alpha/{alpha}',
+        'smiles_column': 'SMILES',
+        'output_dir': f'../trained_models/int_dataset/',
         'epochs': 60,
         'batch_size': 16,
         'lr': 0.001,
