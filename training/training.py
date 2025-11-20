@@ -6,10 +6,10 @@
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows import train_chemberta_multilabel_model
-from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
-    find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
-
+#from utils.chemberta_workflows import train_chemberta_multilabel_model
+#from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
+    #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
+from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
 from sklearn.metrics import f1_score
 
 # %%
@@ -42,12 +42,12 @@ def train_mlc():
     }
 
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
-
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     # %%
    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=threshold, gamma = gamma, alpha = alpha)
     #print(smell_mlc_results)
     #return f1_macro
-
+    ''''
     # 1) First: grid search gamma and alpha with a fixed threshold (e.g. 0.25)
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,
@@ -83,4 +83,5 @@ def train_mlc():
 
     print(f"Final TEST macro-F1 (with tuned gamma, alpha, threshold): {test_macro_f1:.4f}")
     print(f"Final TEST micro-F1: {test_micro_f1:.4f}")
+    '''''
 
