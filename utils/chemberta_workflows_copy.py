@@ -621,3 +621,71 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     print(f" Saved per-label metrics to {csv_path}")
 
     return np.round(f1_score(labels, preds, average="macro"), 3)
+
+def find_best_global_threshold(probs, labels, metric_average="macro"):
+    """
+    Search for a single global threshold that maximizes F1 on the validation set.
+
+    probs:  np.ndarray of shape (N, num_labels) with probabilities
+    labels: np.ndarray of shape (N, num_labels) with {0,1}
+    """
+    thresholds = np.arange(0.01, 0.99, 0.01)
+
+    best_t = 0.5
+    best_f1 = -1.0
+
+    for t in thresholds:
+        preds = (probs >= t).astype(int)
+        f1 = f1_score(labels, preds, average=metric_average, zero_division=0)
+        if f1 > best_f1:
+            best_f1 = f1
+            best_t = t
+
+    print(f"Best global threshold on validation: {best_t:.2f} with F1={best_f1:.4f}")
+    return best_t, best_f1
+
+
+def get_val_probs_and_labels(args, df_val, best_output):
+    """
+    Rebuild the validation dataset and run the best model on it
+    to get probabilities and labels.
+    """
+    tokenizer = RobertaTokenizerFast.from_pretrained(DEFAULT_PRETRAINED_NAME)
+
+    smiles_col = args.smiles_column
+    target_cols = args.target_columns
+
+    texts_val = df_val[smiles_col].tolist()
+    targets_val = df_val[target_cols].values.astype(np.float32)
+
+    val_dataset = ChembertaDataset(texts_val, targets_val, tokenizer)
+
+    trainer = best_output["trainer"]
+    pred_output = trainer.predict(val_dataset)
+
+    logits = pred_output.predictions
+    probs = 1 / (1 + np.exp(-logits))
+    labels = pred_output.label_ids
+
+    return probs, labels
+
+
+def get_test_probs_and_labels(args, df_test, best_output):
+    tokenizer = RobertaTokenizerFast.from_pretrained(DEFAULT_PRETRAINED_NAME)
+
+    smiles_col = args.smiles_column
+    target_cols = args.target_columns
+
+    texts_test = df_test[smiles_col].tolist()
+    targets_test = df_test[target_cols].values.astype(np.float32)
+
+    test_dataset = ChembertaDataset(texts_test, targets_test, tokenizer)
+
+    trainer = best_output["trainer"]
+    pred_output = trainer.predict(test_dataset)
+
+    logits = pred_output.predictions
+    probs = 1 / (1 + np.exp(-logits))
+    labels = pred_output.label_ids
+
+    return probs, labels
