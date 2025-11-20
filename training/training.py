@@ -47,7 +47,6 @@ def train_mlc():
    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=threshold, gamma = gamma, alpha = alpha)
     #print(smell_mlc_results)
     #return f1_macro
-    results, best_output = grid_search_gamma_alpha(smell_mlc_parser, train, test, val)
 
     # 1) First: grid search gamma and alpha with a fixed threshold (e.g. 0.25)
     results, best_output = grid_search_gamma_alpha(
