@@ -27,7 +27,7 @@ if __name__ == "__main__":
     print("Best F1-score alpha:", best_f1_alpha)
     print("Best F1-score:", best_f1)
     '''''
-    train_mlc(gamma=0.75, threshold=0.25, alpha=None)
+    train_mlc(gamma=2, threshold=0.25, alpha=0.25)
     #train_mpnn(DATA_PATH)
     #plot_per_label_metrics(datapath="Data/Metrics/alpha=1.gamma=0.75.csv")
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))

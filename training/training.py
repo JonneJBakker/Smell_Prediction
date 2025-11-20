@@ -24,7 +24,7 @@ def train_mlc(threshold = 0.25, gamma = 0.75, alpha = None):
         'test_csv': '../Data/splits/int_test_stratified10.csv',
         'target_columns': target_cols,
         'smiles_column': 'SMILES',
-        'output_dir': f'../trained_models/int_dataset/',
+        'output_dir': f'../trained_models/int_dataset/gamma{gamma}alpha{alpha}/',
         'epochs': 60,
         'batch_size': 16,
         'lr': 0.001,
