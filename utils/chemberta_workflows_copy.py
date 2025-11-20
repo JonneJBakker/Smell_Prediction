@@ -689,3 +689,30 @@ def get_test_probs_and_labels(args, df_test, best_output):
     labels = pred_output.label_ids
 
     return probs, labels
+
+def find_best_thresholds_per_label(probs, labels):
+    """
+    Find a separate threshold per label that maximizes per-label F1 on validation.
+    Returns:
+        thresholds: np.ndarray of shape (num_labels,)
+    """
+    thresholds = np.arange(0.01, 0.99, 0.01)
+    num_labels = labels.shape[1]
+    best_thresholds = np.zeros(num_labels)
+
+    for j in range(num_labels):
+        y_true = labels[:, j]
+        best_f1 = -1.0
+        best_t = 0.5
+
+        for t in thresholds:
+            y_pred = (probs[:, j] >= t).astype(int)
+            f1 = f1_score(y_true, y_pred, zero_division=0)
+            if f1 > best_f1:
+                best_f1 = f1
+                best_t = t
+
+        best_thresholds[j] = best_t
+        print(f"Label {j}: best t={best_t:.2f}, F1={best_f1:.4f}")
+
+    return best_thresholds

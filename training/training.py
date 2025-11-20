@@ -8,7 +8,7 @@ import argparse
 #from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
 from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
-    find_best_global_threshold, get_test_probs_and_labels
+    find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
 
 from sklearn.metrics import f1_score
 
@@ -55,27 +55,27 @@ def train_mlc():
         df_test=test,  # used only for reporting inside that function
         df_val=val,
         gammas=[0.75],
-        alphas=[0.25],
-        threshold=0.25,  # fixed during grid search
+        alphas=[None, 0.25],
+        threshold=0.5,  # fixed during grid search
     )
 
     # 2) Get validation predictions for the best (gamma, alpha) model
     val_probs, val_labels = get_val_probs_and_labels(smell_mlc_parser, val, best_output)
 
     # 3A) Find best global threshold on validation
-    best_t, best_val_f1 = find_best_global_threshold(val_probs, val_labels, metric_average="macro")
+    #best_t, best_val_f1 = find_best_global_threshold(val_probs, val_labels, metric_average="macro")
 
     # (or 3B) For per-label thresholds:
-    # best_thresholds = find_best_thresholds_per_label(val_probs, val_labels)
+    best_thresholds = find_best_thresholds_per_label(val_probs, val_labels)
 
     # 4) Final evaluation on the test set using the chosen threshold(s)
     test_probs, test_labels = get_test_probs_and_labels(smell_mlc_parser, test, best_output)
 
     # 4A) Using global threshold:
-    test_preds = (test_probs >= best_t).astype(int)
+    #test_preds = (test_probs >= best_t).astype(int)
 
     # 4B) Using per-label thresholds:
-    # test_preds = (test_probs >= best_thresholds).astype(int)
+    test_preds = (test_probs >= best_thresholds).astype(int)
 
     # 5) Compute final test metrics
     test_macro_f1 = f1_score(test_labels, test_preds, average="macro", zero_division=0)
