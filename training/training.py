@@ -56,7 +56,7 @@ def train_mlc():
         df_val=val,
         gammas=[0.75],
         alphas=[None, 0.25],
-        threshold=0.5,  # fixed during grid search
+        threshold=0.25,  # fixed during grid search
     )
 
     # 2) Get validation predictions for the best (gamma, alpha) model
