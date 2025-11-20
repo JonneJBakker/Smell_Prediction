@@ -7,24 +7,25 @@ import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.chemberta_workflows_copy import grid_search_gamma_alpha
 # %%
 RANDOM_SEED = 19237
 # %%
 
 # %%
-def train_mlc(threshold = 0.25, gamma = 0.75, alpha = None):
-    train = pd.read_csv("Data/splits/int_train_stratified80.csv")
-    test = pd.read_csv("Data/splits/int_test_stratified10.csv")
-    val = pd.read_csv("Data/splits/int_val_stratified10.csv")
+def train_mlc():
+    train = pd.read_csv("Data/splits/train_stratified80.csv")
+    test = pd.read_csv("Data/splits/test_stratified10.csv")
+    val = pd.read_csv("Data/splits/val_stratified10.csv")
 
-    target_cols = [col for col in train.columns if col not in ['SMILES']]
+    target_cols = [col for col in train.columns if col not in ['nonStereoSMILES']]
     # Make an args parser
     smell_mlc_defaults = {
-        'train_csv': '../Data/splits/int_train_stratified80.csv',
-        'test_csv': '../Data/splits/int_test_stratified10.csv',
+        'train_csv': '../Data/splits/train_stratified80.csv',
+        'test_csv': '../Data/splits/test_stratified10.csv',
         'target_columns': target_cols,
-        'smiles_column': 'SMILES',
-        'output_dir': f'../trained_models/int_dataset/gamma{gamma}alpha{alpha}/',
+        'smiles_column': 'nonStereoSMILES',
+        'output_dir': f'../trained_models/',
         'epochs': 60,
         'batch_size': 16,
         'lr': 0.001,
@@ -39,6 +40,7 @@ def train_mlc(threshold = 0.25, gamma = 0.75, alpha = None):
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
 
     # %%
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=threshold, gamma = gamma, alpha = alpha)
-    print(smell_mlc_results)
-    return f1_macro
+   #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=threshold, gamma = gamma, alpha = alpha)
+    #print(smell_mlc_results)
+    #return f1_macro
+    results, best_output = grid_search_gamma_alpha(smell_mlc_parser, train, test, val)
