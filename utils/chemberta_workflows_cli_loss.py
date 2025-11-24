@@ -128,7 +128,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         logits = self.classifier(x)
 
         # return features for CLI
-        features_out = pooled
+        features_out = x
 
         loss = None
         if labels is not None:
