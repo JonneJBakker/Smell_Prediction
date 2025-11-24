@@ -32,7 +32,7 @@ def train_mlc():
         'output_dir': f'../trained_models/',
         'epochs': 60,
         'batch_size': 16,
-        'lr': 0.001,
+        'lr': 0.0005,
         'l1_lambda': 0.0,
         'l2_lambda': 0.01,
         'dropout': 0.3,

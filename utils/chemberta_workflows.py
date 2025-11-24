@@ -386,7 +386,7 @@ def train_chemberta_multilabel_model(
     predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
     probs = 1 / (1 + np.exp(-logits))
-    preds = (probs >= 0.5).astype(int)
+    preds = (probs >= threshold).astype(int)
     labels = predictions_output.label_ids
 
     print(f"\nModel parameters:")
