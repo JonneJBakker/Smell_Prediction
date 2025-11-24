@@ -60,6 +60,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         dropout=0.3,
         hidden_channels=100,
         num_mlp_layers=1,
+        unfreeze_last_n_layers = 2,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -67,11 +68,21 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
 
         #freeze language model
-        ''''
+
         for param in self.roberta.parameters():
              param.requires_grad = False
-        '''''
 
+        # 2) unfreeze last N transformer layers
+        if hasattr(self.roberta, "encoder"):
+            encoder_layers = self.roberta.encoder.layer
+            for layer in encoder_layers[-unfreeze_last_n_layers:]:
+                for param in layer.parameters():
+                    param.requires_grad = True
+
+        # (optional, but often helpful) unfreeze final layer norm and embeddings
+        if hasattr(self.roberta, "layernorm"):
+            for p in self.roberta.layernorm.parameters():
+                p.requires_grad = True
         '''' If we want attention pooling
         self.query_vector = nn.Parameter(
             torch.randn(self.roberta.config.hidden_size)
