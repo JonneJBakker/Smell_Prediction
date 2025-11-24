@@ -119,7 +119,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         '''''
 
         self.dropout = nn.Dropout(dropout)
-        num_input_features = self.roberta.config.hidden_size
+        num_input_features = 2*self.roberta.config.hidden_size
 
         # Output dimension = num_labels, one logit per label
         self.classifier = SimpleMLP(
@@ -143,8 +143,15 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
         '''''
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="cls"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="cls_mean"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
+
+        if strat == "cls_mean":
+            cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
+            token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
+            mean_pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
+            pooled = torch.cat([mean_pooled, cls_emb], dim=1)
+            x = self.dropout(pooled)
 
         if strat == "mean_pooling":
             token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
