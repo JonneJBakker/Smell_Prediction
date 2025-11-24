@@ -39,6 +39,8 @@ def train_mlc():
         'hidden_channels': 128,
         'num_mlp_layers': 1,
         'random_seed': RANDOM_SEED,
+        'lambda_energy': 0.2,
+        'lambda_corr':0.2,
     }
 
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)

@@ -34,90 +34,9 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from models.simple_mlp import SimpleMLP
+from utils.cil_loss import ChemicallyInformedLoss
 
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
-class ChemicallyInformedBCELoss(nn.Module):
-    """
-    BCE + chemically-informed regularization for multi-label classification.
-
-    L = BCEWithLogits + λ_energy * L_energy + λ_corr * L_corr
-
-    - BCEWithLogits handles per-label predictions with optional pos_weight.
-    - L_energy encourages the *batch-mean* predicted probabilities per class
-      to match a global target `energy_target` (e.g., class frequencies).
-    - L_corr encourages the *batch* predicted label co-occurrence structure
-      to resemble the global co-occurrence matrix `true_corr_global`.
-    """
-
-    def __init__(
-        self,
-        pos_weight: torch.Tensor = None,
-        energy_target: torch.Tensor = None,
-        true_corr_global: torch.Tensor = None,
-        lambda_energy: float = 0.0,
-        lambda_corr: float = 0.0,
-    ):
-        super().__init__()
-
-        # Base BCE loss (no reduction='none' — we aggregate here)
-        if pos_weight is not None:
-            self.bce = nn.BCEWithLogitsLoss(pos_weight=pos_weight, reduction="mean")
-        else:
-            self.bce = nn.BCEWithLogitsLoss(reduction="mean")
-
-        # Store global statistics as buffers (moved with .to(device), saved in state_dict)
-        if energy_target is not None:
-            self.register_buffer("energy_target", energy_target.clone().detach())
-        else:
-            self.energy_target = None
-
-        if true_corr_global is not None:
-            self.register_buffer("true_corr_global", true_corr_global.clone().detach())
-        else:
-            self.true_corr_global = None
-
-        self.lambda_energy = float(lambda_energy)
-        self.lambda_corr = float(lambda_corr)
-
-    def forward(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        """
-        logits: (B, C) raw scores
-        labels: (B, C) multi-hot targets in {0,1}
-        """
-        labels = labels.float()
-        B, C = labels.shape
-
-        # 1) base BCE loss
-        base_loss = self.bce(logits, labels)
-
-        # if no extra regularizers, just return BCE
-        if (self.lambda_energy == 0.0 or self.energy_target is None) and \
-           (self.lambda_corr == 0.0 or self.true_corr_global is None):
-            return base_loss
-
-        probs = torch.sigmoid(logits)  # (B, C)
-
-        # 2) class-level energy loss
-        if self.lambda_energy > 0.0 and self.energy_target is not None:
-            # make sure target is on the same device
-            energy_target = self.energy_target.to(logits.device)
-            energy_pred = probs.mean(dim=0)  # (C,)
-            energy_loss = torch.mean((energy_pred - energy_target) ** 2)
-        else:
-            energy_loss = 0.0
-
-        # 3) label-correlation loss
-        if self.lambda_corr > 0.0 and self.true_corr_global is not None:
-            true_corr = self.true_corr_global.to(logits.device)
-            # batch predicted co-occurrence / correlation-like matrix
-            pred_corr = (probs.T @ probs) / max(B, 1)  # (C, C)
-            corr_loss = torch.mean((pred_corr - true_corr) ** 2)
-        else:
-            corr_loss = 0.0
-
-        total_loss = base_loss + self.lambda_energy * energy_loss + self.lambda_corr * corr_loss
-        return total_loss
-
 
 def mean_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     # hidden_states: (batch, seq_len, hidden)
@@ -131,19 +50,14 @@ class ChembertaMultiLabelClassifier(nn.Module):
     """
     ChemBERTa multi-label classification model.
     """
+
     def __init__(
         self,
         pretrained,
         num_labels,
-        num_features=0,
         dropout=0.3,
         hidden_channels=100,
         num_mlp_layers=1,
-        pos_weight=None,
-        energy_target=None,
-        true_corr_global=None,
-        lambda_energy=0.0,
-        lambda_corr=0.0,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -173,14 +87,13 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
-        self.loss_fct = ChemicallyInformedBCELoss(
-            pos_weight=pos_weight,
-            energy_target=energy_target,
-            true_corr_global=true_corr_global,
-            lambda_energy=lambda_energy,
-            lambda_corr=lambda_corr,
-        )
 
+        ''''
+        if pos_weight is not None:
+            self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        else:
+            self.loss_fct = nn.BCEWithLogitsLoss()
+        '''''
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="mean_pooling"):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
@@ -208,17 +121,54 @@ class ChembertaMultiLabelClassifier(nn.Module):
             x = self.dropout(pooled)
 
         # (batch_size, num_labels)
+        # (batch_size, num_labels)
         logits = self.classifier(x)
+
+        # return features for CLI
+        features_out = x  # or pooled, your choice
 
         loss = None
         if labels is not None:
-            # labels expected shape: (batch_size, num_labels), dtype=float
-            loss = self.loss_fct(logits, labels)
+            # IMPORTANT: loss will be overridden in Trainer with CLI
+            loss = None
 
-        return SequenceClassifierOutput(
-            loss=loss,
-            logits=logits,
+        return {
+            "loss": loss,
+            "logits": logits,
+            "features": features_out,
+        }
+
+class CILTrainer(Trainer):
+    def __init__(self, *args, cil_loss_fn=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cil_loss_fn = cil_loss_fn
+
+    def compute_loss(
+        self,
+        model,
+        inputs,
+        return_outputs: bool = False,
+        num_items_in_batch: int | None = None,
+    ):
+        labels = inputs.get("labels")
+        # make sure labels are float for the loss
+        if labels is not None:
+            labels = labels.float()
+
+        outputs = model(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
         )
+
+        logits = outputs["logits"]
+        features = outputs["features"]
+
+        loss, parts = self.cil_loss_fn(logits, labels, features)
+
+        if return_outputs:
+            return loss, outputs
+        return loss
+
 
 class ChembertaDataset(Dataset):
     """
@@ -268,6 +218,8 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
         logits = eval_pred.predictions
         labels = eval_pred.label_ids
 
+        if isinstance(logits, (tuple, list)):
+            logits = logits[0]
         # Convert logits to probabilities then to binary predictions
         probs = 1 / (1 + np.exp(-logits))
         preds = (probs >= threshold).astype(int)
@@ -297,7 +249,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, df_val, device=None, threshold=0.25
+    args, df_train, df_test, df_val, device=None, threshold=0.25, gamma = 1, alpha = None
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -337,24 +289,31 @@ def train_chemberta_multilabel_model(
 
     # Calculate pos_weight
     pos_targets = df_train[target_cols].values
-
+    """"
     num_pos = (pos_targets == 1).sum(axis=0)
     num_neg = (pos_targets == 0).sum(axis=0)
 
     pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32, device=device)
+    """
+    # 1) positive counts per label
+    num_pos = (pos_targets == 1).sum(axis=0)  # shape: [num_labels]
 
-    # ---------- Chemically-informed global statistics from TRAIN set ----------
-    Y_np = targets_train.astype(np.float32)  # shape (N, C)
-    Y = torch.from_numpy(Y_np)  # CPU tensor
-    N, C = Y.shape
+    pos_counts = torch.tensor(num_pos, dtype=torch.float32, device=device)
+    neg_counts = torch.tensor((pos_targets == 0).sum(axis=0), dtype=torch.float32, device=device)
 
-    # 1) class frequency -> energy_target
-    freq = Y.mean(dim=0)  # [C], in [0,1]
-    energy_target = freq  # simple choice: just P(y_c = 1)
-
-    # 2) global co-occurrence matrix -> true_corr_global
-    cooc = (Y.T @ Y) / N  # [C, C], approx P(i & j)
-    true_corr_global = cooc
+    cil_loss_fn = ChemicallyInformedLoss(
+        pos_counts=pos_counts,
+        neg_counts=neg_counts,
+        lambda1=0.3,
+        lambda2=0.3,
+        lambda3=0.5,
+        lambda4=0.3,
+        c=0.2,
+        e1=1.0,
+        e2=1.0,
+        sim_tau=0.8,
+        device=device
+    )
 
     # Create model
     model = ChembertaMultiLabelClassifier(
@@ -363,11 +322,6 @@ def train_chemberta_multilabel_model(
         dropout=args.dropout,
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
-        pos_weight=pos_weight,
-        energy_target=energy_target,
-        true_corr_global=true_corr_global,
-        lambda_energy=getattr(args, "lambda_energy", 0.2),
-        lambda_corr=getattr(args, "lambda_corr", 0.2),
     )
 
     # Setup training arguments
@@ -401,13 +355,13 @@ def train_chemberta_multilabel_model(
 
     compute_metrics = get_multilabel_compute_metrics_fn(threshold=threshold)
 
-    trainer = Trainer(
+    trainer = CILTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
-        #l1_lambda=args.l1_lambda,
+        cil_loss_fn=cil_loss_fn,
     )
 
     print("\nTraining ChemBERTa multi-label model...")
@@ -423,8 +377,11 @@ def train_chemberta_multilabel_model(
 
     predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
+    if isinstance(logits, (tuple, list)):
+        logits = logits[0]
+
     probs = 1 / (1 + np.exp(-logits))
-    preds = (probs >= 0.5).astype(int)
+    preds = (probs >= threshold).astype(int)
     labels = predictions_output.label_ids
 
     print(f"\nModel parameters:")
@@ -510,6 +467,8 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     labels = pred_output.label_ids
 
     # Convert logits → probabilities → binary predictions ----
+    if isinstance(logits, (tuple, list)):
+        logits = logits[0]
     probs = 1 / (1 + np.exp(-logits))
     preds = (probs >= threshold).astype(int)
 
