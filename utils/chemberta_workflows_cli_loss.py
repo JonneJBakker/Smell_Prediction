@@ -32,6 +32,8 @@ from transformers import (
     AutoConfig
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
+from torch.optim import AdamW
+from transformers.optimization import get_linear_schedule_with_warmup
 
 from models.simple_mlp import SimpleMLP
 from utils.cil_loss import ChemicallyInformedLoss
@@ -126,7 +128,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         logits = self.classifier(x)
 
         # return features for CLI
-        features_out = x  # or pooled, your choice
+        features_out = pooled
 
         loss = None
         if labels is not None:
@@ -325,6 +327,37 @@ def train_chemberta_multilabel_model(
         num_mlp_layers=args.num_mlp_layers,
     )
 
+    encoder_params = []
+    head_params = []
+
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if name.startswith("roberta"):
+            encoder_params.append(param)
+        else:
+            head_params.append(param)
+
+    print(f"Trainable encoder params: {sum(p.numel() for p in encoder_params):,}")
+    print(f"Trainable head params: {sum(p.numel() for p in head_params):,}")
+
+    optimizer = AdamW(
+        [
+            {"params": encoder_params, "lr": args.encoder_lr},
+            {"params": head_params, "lr": args.head_lr},
+        ],
+        weight_decay=args.l2_lambda,
+    )
+
+    # optional: scheduler with warmup
+    num_training_steps = len(train_dataset) // args.batch_size * args.epochs
+    num_warmup_steps = int(0.1 * num_training_steps)
+
+    lr_scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=num_warmup_steps,
+        num_training_steps=num_training_steps,
+    )
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
@@ -363,6 +396,7 @@ def train_chemberta_multilabel_model(
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
         cil_loss_fn=cil_loss_fn,
+        optimizers=(optimizer, lr_scheduler),
     )
 
     print("\nTraining ChemBERTa multi-label model...")
