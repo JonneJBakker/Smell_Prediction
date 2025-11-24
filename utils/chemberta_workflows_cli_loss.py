@@ -65,9 +65,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
 
         #freeze language model
+        ''''
         for param in self.roberta.parameters():
              param.requires_grad = False
-
+        '''''
 
         '''' If we want attention pooling
         self.query_vector = nn.Parameter(
