@@ -171,7 +171,7 @@ def main():
     )
 
     objective = make_objective(cli_args)
-    study.optimize(objective, n_trials=cli_args.n_trials)
+    study.optimize(objective, n_trials=cli_args.n_trials, catch=(ValueError,))
 
     print("\n===== Optuna finished (Focal Loss baseline) =====")
     print(f"Best trial number: {study.best_trial.number}")
