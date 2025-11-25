@@ -113,11 +113,12 @@ class ChembertaMultiLabelClassifier(nn.Module):
              param.requires_grad = False
 
 
-        '''' If we want attention pooling
-        self.query_vector = nn.Parameter(
-            torch.randn(self.roberta.config.hidden_size)
-        )
-        '''''
+        # If we want attention pooling
+        if self.pooling_strat == "attention":
+            self.query_vector = nn.Parameter(
+                torch.randn(self.roberta.config.hidden_size)
+            )
+
 
         self.dropout = nn.Dropout(dropout)
         if self.pooling_strat == "cls_mean" or self.pooling_strat == "max_mean":
@@ -150,7 +151,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat=None):
         if strat is None:
             strat = self.pooling_strat
-
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "cls_mean":
@@ -361,6 +361,7 @@ def train_chemberta_multilabel_model(
         pos_weight=pos_weight,
         gamma = gamma,
         alpha = alpha,
+        pooling_strat=args.pooling_strat,
     )
 
     # Setup training arguments
