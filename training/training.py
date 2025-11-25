@@ -6,10 +6,10 @@
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows import train_chemberta_multilabel_model
+#from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
     #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
-#from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
+from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
 from sklearn.metrics import f1_score
 
 # %%
@@ -45,10 +45,45 @@ def train_mlc():
         'lambda_corr':0.2,
     }
 
-    smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    cil_loss = {
+        'train_csv': '../Data/splits/train_stratified80.csv',
+        'test_csv': '../Data/splits/test_stratified10.csv',
+        'target_columns': target_cols,
+        'smiles_column': 'nonStereoSMILES',
+        'output_dir': f'../trained_models/',
+        "batch_size" : 16,
+        "epochs" : 60,
+        "random_seed": RANDOM_SEED,
+        'l2_lambda': 0.01,
+        # model architecture
+        "dropout" : 0.22,
+        "hidden_channels" : 256,
+        "num_mlp_layers" : 2,
+
+        # learning rates
+        "lr_head" : 1e-3,  # head LR
+        "lr_encoder" : 2e-5,  # encoder LR
+
+        # encoder fine-tuning
+        "unfreeze_last_n_layers" : 0,
+
+        # CIL hyperparameters
+        "lambda1" : 0.53,
+        "lambda2" : 0.59,
+        "lambda3" : 0.36,
+        "lambda4" : 0.31,
+
+        # structural/energy hyperparameter
+        "c" : 0.14,
+
+        # final threshold for classification
+        "threshold" : 0.27,
+    }
+
+    smell_mlc_parser = argparse.Namespace(**cil_loss)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
     # %%
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=0.25)
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=0.25)
     #print(smell_mlc_results)
     #return f1_macro
     ''''
