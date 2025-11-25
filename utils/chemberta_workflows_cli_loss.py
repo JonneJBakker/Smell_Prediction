@@ -136,7 +136,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         # (batch_size, num_labels)
         # (batch_size, num_labels)
-        logits = self.classifier(x)
+        logits = self.classifier(pooled)
 
         # return features for CLI
         features_out = x
@@ -318,16 +318,17 @@ def train_chemberta_multilabel_model(
     cil_loss_fn = ChemicallyInformedLoss(
         pos_counts=pos_counts,
         neg_counts=neg_counts,
-        lambda1=0.3,
-        lambda2=0.3,
-        lambda3=0.5,
-        lambda4=0.3,
-        c=0.2,
+        lambda1=args.lambda1,
+        lambda2=args.lambda2,
+        lambda3=args.lambda3,
+        lambda4=args.lambda4,
+        c=args.c,
         e1=1.0,
         e2=1.0,
         sim_tau=0.8,
         device=device
     )
+
 
     # Create model
     model = ChembertaMultiLabelClassifier(
@@ -336,6 +337,7 @@ def train_chemberta_multilabel_model(
         dropout=args.dropout,
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
+        unfreeze_last_n_layers=args.unfreeze_last_n_layers,
     )
 
     encoder_params = []
@@ -354,8 +356,8 @@ def train_chemberta_multilabel_model(
 
     optimizer = AdamW(
         [
-            {"params": encoder_params, "lr": args.encoder_lr},
-            {"params": head_params, "lr": args.head_lr},
+            {"params": encoder_params, "lr": args.lr_encoder},
+            {"params": head_params, "lr": args.lr_head},
         ],
         weight_decay=args.l2_lambda,
     )
@@ -387,7 +389,6 @@ def train_chemberta_multilabel_model(
         eval_strategy=evaluation_strategy,
         save_strategy=save_strategy,
         save_total_limit=1,
-        learning_rate=args.lr,
         weight_decay=args.l2_lambda,
         load_best_model_at_end=load_best_model_at_end,
         metric_for_best_model="macro_f1",
@@ -447,9 +448,10 @@ def train_chemberta_multilabel_model(
 
     hyperparams = {
         "hidden_channels": args.hidden_channels,
-        "lr": args.lr,
         "l2_lambda": args.l2_lambda,
         "l1_lambda": args.l1_lambda,
+        "lr_encoder": args.lr_encoder,
+        "lr_head": args.lr_head,
         "batch_size": args.batch_size,
         "dropout": args.dropout,
         "num_mlp_layers": args.num_mlp_layers,

@@ -101,10 +101,11 @@ class ChembertaMultiLabelClassifier(nn.Module):
         pos_weight=None,
         gamma = 0.75,
         alpha = None,
+        pooling_strat = "max_mean",
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
-
+        self.pooling_strat = pooling_strat
 
 
         #freeze language model
@@ -119,7 +120,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         '''''
 
         self.dropout = nn.Dropout(dropout)
-        num_input_features = 2*self.roberta.config.hidden_size
+        if self.pooling_strat == "cls_mean" or self.pooling_strat == "max_mean":
+            num_input_features = 2*self.roberta.config.hidden_size
+        else:
+            num_input_features = self.roberta.config.hidden_size
 
         # Output dimension = num_labels, one logit per label
         self.classifier = SimpleMLP(
@@ -143,7 +147,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
         '''''
-    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat="cls_mean"):
+    def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat=None):
+        if strat is None:
+            strat = self.pooling_strat
+
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
 
         if strat == "cls_mean":
@@ -151,6 +158,23 @@ class ChembertaMultiLabelClassifier(nn.Module):
             token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
             mean_pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
             pooled = torch.cat([mean_pooled, cls_emb], dim=1)
+            x = self.dropout(pooled)
+
+        if strat == "max_mean":
+            token_embs = outputs.last_hidden_state
+            mean_pooled = mean_pool(token_embs, attention_mask)  # [B, H]
+
+            # 2) max pooling with mask over valid tokens
+            # attention_mask: [B, N] with 1=valid, 0=pad
+            mask = attention_mask.unsqueeze(-1).bool()  # [B, N, 1]
+
+            # set padded positions to -inf so they don't affect max
+            masked_token_embs = token_embs.masked_fill(~mask, float("-inf"))
+
+            max_pooled, _ = masked_token_embs.max(dim=1)  # [B, H]
+
+            # 3) concatenate mean and max
+            pooled = torch.cat([mean_pooled, max_pooled], dim=1)  # [B, 2H]
             x = self.dropout(pooled)
 
         if strat == "mean_pooling":
