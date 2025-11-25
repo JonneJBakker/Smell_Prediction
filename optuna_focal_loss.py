@@ -50,7 +50,7 @@ class ArgsForTraining:
         self.train_csv = None
         self.output_dir = None
 
-        self.epochs = None
+        self.epochs = 40
         self.batch_size = None
         self.lr = None
         self.l2_lambda = None
@@ -78,7 +78,6 @@ def make_objective(cli_args):
 
     def objective(trial: optuna.Trial) -> float:
         # ----- Hyperparameter search space -----
-        epochs = trial.suggest_int("epochs", 40)
         batch_size = trial.suggest_categorical("batch_size", [16, 32])
         lr = trial.suggest_float("lr", 0.0005, 0.003, log=True)
         weight_decay = trial.suggest_float("l2_lambda", 0.005, 0.02, log=True)
@@ -108,7 +107,7 @@ def make_objective(cli_args):
         args.train_csv = cli_args.train_csv
         args.output_dir = os.path.join(cli_args.output_dir, f"trial_{trial.number}")
 
-        args.epochs = epochs
+        args.epochs = 40
         args.batch_size = batch_size
         args.lr = lr
         args.l2_lambda = weight_decay
