@@ -78,10 +78,10 @@ def make_objective(cli_args):
 
     def objective(trial: optuna.Trial) -> float:
         # ----- Hyperparameter search space -----
-        epochs = trial.suggest_int("epochs", 10, 40)
-        batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
-        lr = trial.suggest_float("lr", 1e-5, 0.002, log=True)
-        weight_decay = trial.suggest_float("l2_lambda", 1e-6, 1e-2, log=True)
+        epochs = trial.suggest_int("epochs", 40)
+        batch_size = trial.suggest_categorical("batch_size", [16, 32])
+        lr = trial.suggest_float("lr", 0.0005, 0.003, log=True)
+        weight_decay = trial.suggest_float("l2_lambda", 5e-3, 1e-2, log=True)
 
         dropout = trial.suggest_float("dropout", 0.1, 0.5)
         hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 384])
@@ -97,7 +97,7 @@ def make_objective(cli_args):
         # pooling strategy: mean, CLS, or attention
         pooling_strat = trial.suggest_categorical(
             "pooling_strat",
-            ["mean_pooling", "cls", "attention", "cls_mean", "max_mean"],
+            ["cls_mean", "max_mean"],
         )
 
         # ----- Build args expected by train_chemberta_multilabel_model -----
