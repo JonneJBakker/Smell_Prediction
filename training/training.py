@@ -61,7 +61,7 @@ def train_mlc():
         "num_mlp_layers" : 2,
 
         # learning rates
-        "lr_head" : 1e-3,  # head LR
+        "lr_head" : 7e-4,  # head LR
         "lr_encoder" : 2e-5,  # encoder LR
 
         # encoder fine-tuning
