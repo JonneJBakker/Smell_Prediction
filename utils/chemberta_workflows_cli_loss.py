@@ -315,6 +315,18 @@ def train_chemberta_multilabel_model(
     pos_counts = torch.tensor(num_pos, dtype=torch.float32, device=device)
     neg_counts = torch.tensor((pos_targets == 0).sum(axis=0), dtype=torch.float32, device=device)
 
+    Y = pos_targets  # [N, M], 0/1
+    N_dataset = Y.shape[0]
+
+    # Y^T Y / N  -> true co-occurrence / correlation matrix
+    co_mat = (Y.T @ Y) / N_dataset  # shape: [M, M]
+    co_mat_neg = ((1.0 - Y).T @ (1.0 - Y)) / N_dataset  # shape: [M, M]
+
+    co_diag_pos_dataset = np.diag(co_mat)  # [M,]
+    co_diag_neg_dataset = np.diag(co_mat_neg)  # [M,]
+    corr_true_dataset = co_mat  # [M, M]
+
+    # ---- 3) loss with dataset-level co-occurrence ----
     cil_loss_fn = ChemicallyInformedLoss(
         pos_counts=pos_counts,
         neg_counts=neg_counts,
@@ -326,7 +338,11 @@ def train_chemberta_multilabel_model(
         e1=1.0,
         e2=1.0,
         sim_tau=0.8,
-        device=device
+        device=device,
+        use_dataset_cooccur=True,
+        co_diag_pos_dataset=co_diag_pos_dataset,
+        co_diag_neg_dataset=co_diag_neg_dataset,
+        corr_true_dataset=corr_true_dataset,
     )
 
 
