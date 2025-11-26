@@ -177,7 +177,7 @@ class CILTrainer(Trainer):
         logits = outputs["logits"]
         features = outputs["features"]
 
-        loss, parts = self.cil_loss_fn(logits, labels, features)
+        loss = self.cil_loss_fn(logits, labels, features)
 
         if return_outputs:
             return loss, outputs
@@ -330,11 +330,11 @@ def train_chemberta_multilabel_model(
     cil_loss_fn = ChemicallyInformedLoss(
         pos_counts=pos_counts,
         neg_counts=neg_counts,
-        lambda1=args.lambda1,
-        lambda2=args.lambda2,
-        lambda3=args.lambda3,
-        lambda4=args.lambda4,
-        c=args.c,
+        #lambda1=args.lambda1,
+        #lambda2=args.lambda2,
+        #lambda3=args.lambda3,
+        #lambda4=args.lambda4,
+        #c=args.c,
         e1=1.0,
         e2=1.0,
         sim_tau=0.8,
