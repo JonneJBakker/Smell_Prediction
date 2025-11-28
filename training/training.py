@@ -6,10 +6,10 @@
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-#from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
     #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
-from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
+#from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
 from sklearn.metrics import f1_score
 
 # %%
@@ -43,6 +43,10 @@ def train_mlc():
         'random_seed': RANDOM_SEED,
         'lambda_energy': 0.2,
         'lambda_corr':0.2,
+        'pooling_strat': 'mean_pooling',
+        'gamma': 0.75,
+        'alpha': None,
+        'threshold': 0.25,
     }
 
     cil_loss = {
@@ -80,14 +84,11 @@ def train_mlc():
         "threshold" : 0.27,
     }
 
-    smell_mlc_parser = argparse.Namespace(**cil_loss)
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
+    smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
     # %%
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=0.25)
-    #print(smell_mlc_results)
-    #return f1_macro
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
-    # 1) First: grid search gamma and alpha with a fixed threshold (e.g. 0.25)
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,
         df_train=train,
@@ -97,7 +98,7 @@ def train_mlc():
         alphas=[None, 0.25],
         threshold=0.25,  # fixed during grid search
     )
-
+    ''
     # 2) Get validation predictions for the best (gamma, alpha) model
     val_probs, val_labels = get_val_probs_and_labels(smell_mlc_parser, val, best_output)
 

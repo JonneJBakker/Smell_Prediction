@@ -82,7 +82,7 @@ def mean_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torc
     # attention_mask: (batch, seq_len)
     mask = attention_mask.unsqueeze(-1).type_as(hidden_states)  # (batch, seq_len, 1)
     summed = (hidden_states * mask).sum(dim=1)                  # (batch, hidden)
-    denom = mask.sum(dim=1).clamp(min=1e-9)                     # avoid divide-by-zero
+    denom = mask.sum(dim=1).clamp(min=1e-9)
     return summed / denom
 
 class ChembertaMultiLabelClassifier(nn.Module):
@@ -164,8 +164,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
             token_embs = outputs.last_hidden_state
             mean_pooled = mean_pool(token_embs, attention_mask)  # [B, H]
 
-            # 2) max pooling with mask over valid tokens
-            # attention_mask: [B, N] with 1=valid, 0=pad
             mask = attention_mask.unsqueeze(-1).bool()  # [B, N, 1]
 
             # set padded positions to -inf so they don't affect max
@@ -173,7 +171,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
             max_pooled, _ = masked_token_embs.max(dim=1)  # [B, H]
 
-            # 3) concatenate mean and max
             pooled = torch.cat([mean_pooled, max_pooled], dim=1)  # [B, 2H]
             x = self.dropout(pooled)
 
