@@ -50,9 +50,9 @@ class ArgsForTraining:
         self.train_csv = None
         self.output_dir = None
 
-        self.epochs = 40
-        self.batch_size = None
-        self.lr = None
+        self.epochs = 30
+        self.batch_size = 32
+        self.lr = 0.001
         self.l2_lambda = None
         self.l1_lambda = 0.0
 
@@ -78,12 +78,10 @@ def make_objective(cli_args):
 
     def objective(trial: optuna.Trial) -> float:
         # ----- Hyperparameter search space -----
-        batch_size = trial.suggest_categorical("batch_size", [16, 32])
-        lr = trial.suggest_float("lr", 0.0005, 0.003, log=True)
         weight_decay = trial.suggest_float("l2_lambda", 0.005, 0.02, log=True)
 
         dropout = trial.suggest_float("dropout", 0.1, 0.5)
-        hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 384])
+        hidden_channels = trial.suggest_categorical("hidden_channels", [128, 256, 384])
         num_mlp_layers = trial.suggest_int("num_mlp_layers", 1, 2)
 
         # classification threshold
@@ -107,9 +105,9 @@ def make_objective(cli_args):
         args.train_csv = cli_args.train_csv
         args.output_dir = os.path.join(cli_args.output_dir, f"trial_{trial.number}")
 
-        args.epochs = 40
-        args.batch_size = batch_size
-        args.lr = lr
+        args.epochs = 30
+        args.batch_size = 32
+        args.lr = 0.001
         args.l2_lambda = weight_decay
         args.l1_lambda = 0.0
 

@@ -7,6 +7,7 @@ import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.make_pom import plot_pca
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
     #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
 #from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
@@ -83,11 +84,11 @@ def train_mlc():
         # final threshold for classification
         "threshold" : 0.27,
     }
-
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
+    plot_pca(args=smell_mlc_parser)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
     # %%
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,
