@@ -58,7 +58,7 @@ class ArgsForTraining:
 
         self.dropout = None
         self.hidden_channels = None
-        self.num_mlp_layers = None
+        self.num_mlp_layers = 2
         self.random_seed = None
 
         # NEW: focal loss + pooling hyperparameters
@@ -78,18 +78,17 @@ def make_objective(cli_args):
 
     def objective(trial: optuna.Trial) -> float:
         # ----- Hyperparameter search space -----
-        weight_decay = trial.suggest_float("l2_lambda", 0.005, 0.02, log=True)
+        weight_decay = trial.suggest_float("l2_lambda", 0.01, 0.02, log=True)
 
         dropout = trial.suggest_float("dropout", 0.1, 0.5)
-        hidden_channels = trial.suggest_categorical("hidden_channels", [128, 256, 384])
-        num_mlp_layers = trial.suggest_int("num_mlp_layers", 1, 2)
+        hidden_channels = trial.suggest_categorical("hidden_channels", [384, 512, 1024])
 
         # classification threshold
-        threshold = trial.suggest_float("threshold", 0.15, 0.35)
+        threshold = trial.suggest_float("threshold", 0.2, 0.35)
 
         # focal loss hyperparameters
-        gamma = trial.suggest_float("gamma", 0.5, 3.0)
-        alpha = trial.suggest_float("alpha", 0.0, 1.0)  # scalar alpha ∈ [0,1]
+        gamma = trial.suggest_float("gamma", 1.75, 2.25)
+        alpha = trial.suggest_float("alpha", 0.1, 0.5)  # scalar alpha ∈ [0,1]
 
         # pooling strategy: mean, CLS, or attention
         pooling_strat = trial.suggest_categorical(
@@ -113,7 +112,7 @@ def make_objective(cli_args):
 
         args.dropout = dropout
         args.hidden_channels = hidden_channels
-        args.num_mlp_layers = num_mlp_layers
+        args.num_mlp_layers = 2
         args.random_seed = cli_args.seed
 
         args.gamma = gamma
