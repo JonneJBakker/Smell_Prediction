@@ -35,12 +35,11 @@ def chemberta_predict_embedding(model, dataset, device, batch_size=256):
 
             # Use the same pooling as in your forward (e.g. "max_mean")
             mean_pooled = mean_pool(token_embs, attention_mask)  # from your utility file
-            # e.g. for "max_mean"
-            mask = attention_mask.unsqueeze(-1).bool()
-            masked = token_embs.masked_fill(~mask, float("-inf"))
-            max_pooled, _ = masked.max(dim=1)
 
-            pooled = mean_pooled
+            cls_emb = outputs.last_hidden_state[:, 0, :]
+
+            mean_pooled = mean_pooled
+            pooled = torch.cat([mean_pooled, cls_emb], dim=1)
             all_embeds.append(pooled.cpu().numpy())
 
     return np.concatenate(all_embeds, axis=0)  # (N, D)
@@ -69,7 +68,7 @@ def plot_pca(args):
     # --- config you already know from training ---
     smiles_col = args.smiles_column               # same as args.smiles_column
     target_cols = args.target_columns             # same list as args.target_columns
-    output_dir = "trained_models/chemberta_multilabel_model_final.bin"  # where Trainer saved the model
+    output_dir = "runs/optuna_focal_2/trial_11/chemberta_multilabel_model_final.bin"  # where Trainer saved the model
 
     # Load data you want to visualize (can be train+val+test or full dataset)
     df = pd.read_csv("Data/splits/train_stratified80.csv")
@@ -108,7 +107,7 @@ def plot_pca(args):
     pom_frame(model, dataset, device, target_cols=target_cols)
 
 
-def pom_frame(model, dataset, device, target_cols, is_preds=False, threshold=0.25):
+def pom_frame(model, dataset, device, target_cols, is_preds=False, threshold=0.35):
     pom_embeds = chemberta_predict_embedding(model, dataset, device)
     y_preds = get_probabilities(model, dataset, device)  # the sigmoid(logits) part we wrote earlier
     required_desc = list(target_cols)

@@ -6,8 +6,9 @@
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows import train_chemberta_multilabel_model
-from utils.make_pom import plot_pca
+#from utils.chemberta_workflows import train_chemberta_multilabel_model
+#from utils.make_pom import plot_pca
+from utils.contrastie_loss import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
     #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
 #from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
@@ -48,6 +49,34 @@ def train_mlc():
         'gamma': 0.75,
         'alpha': None,
         'threshold': 0.25,
+        'use_contrastive': True,
+        'contrastive_weight': 0.1,
+        'contrastive_temperature': 0.1,
+    }
+
+    smell_mlc_best = {
+        'train_csv': '../Data/splits/train_stratified80.csv',
+        'test_csv': '../Data/splits/test_stratified10.csv',
+        'target_columns': target_cols,
+        'smiles_column': 'nonStereoSMILES',
+        'output_dir': f'../trained_models/',
+        'epochs': 60,
+        'batch_size': 32,
+        'lr': 0.001,
+        'encoder_lr': 1e-5,
+        'head_lr': 1e-4,
+        'l1_lambda': 0.0,
+        'l2_lambda': 0.015388857951581413,
+        'dropout': 0.11414895045246401,
+        'hidden_channels': 1024,
+        'num_mlp_layers': 2,
+        'random_seed': RANDOM_SEED,
+        'lambda_energy': 0.2,
+        'lambda_corr': 0.2,
+        'pooling_strat': 'cls_mean',
+        'gamma': 2.0292623653896453,
+        'alpha': 0.22833816670574952,
+        'threshold': 0.3492848181402972,
     }
 
     cil_loss = {
@@ -85,8 +114,9 @@ def train_mlc():
         "threshold" : 0.27,
     }
     smell_mlc_parser = argparse.Namespace(**smell_mlc_defaults)
-    plot_pca(args=smell_mlc_parser)
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
+
+    #plot_pca(args=smell_mlc_parser)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val, threshold=0.27)
     # %%
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
