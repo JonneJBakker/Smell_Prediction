@@ -471,9 +471,9 @@ def token_dropout(smiles: str, p: float = 0.02) -> str:
 
 def default_augment_fn(smiles: str) -> str:
     aug = augment_random_smiles(smiles)
-    if np.random.rand() < 0.3:
+    if np.random.rand() < 0.0:
         aug = mask_smiles(aug, p=0.03)
-    if np.random.rand() < 0.3:
+    if np.random.rand() < 0.0:
         aug = token_dropout(aug, p=0.02)
     return aug
 
