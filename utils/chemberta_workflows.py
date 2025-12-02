@@ -127,7 +127,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
             num_input_features = self.roberta.config.hidden_size
 
         # Output dimension = num_labels, one logit per label
-        self.classifier = SimpleMLP(
+        self.mlp = SimpleMLP(
             num_input_features,
             hidden_channels,
             num_mlp_layers,
@@ -198,7 +198,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
             x = self.dropout(pooled)
 
         # (batch_size, num_labels)
-        logits = self.classifier(x)
+        logits = self.mlp(x)
 
         loss = None
         if labels is not None:
@@ -287,7 +287,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
 
 def train_chemberta_multilabel_model(
-    args, df_train, df_test, df_val, device=None, threshold=0.25, gamma = 1, alpha = None
+    args, df_train, df_test, df_val, device=None,
 ):
     """
     Train a ChemBERTa model for multi-label classification on SMILES data.
@@ -324,30 +324,6 @@ def train_chemberta_multilabel_model(
     val_dataset = ChembertaDataset(texts_val, targets_val, tokenizer)
 
 
-
-    # Calculate pos_weight
-    pos_targets = df_train[target_cols].values
-    """"
-    num_pos = (pos_targets == 1).sum(axis=0)
-    num_neg = (pos_targets == 0).sum(axis=0)
-
-    pos_weight = torch.tensor(num_neg / np.maximum(num_pos, 1), dtype=torch.float32, device=device)
-    """
-    # 1) positive counts per label
-    num_pos = (pos_targets == 1).sum(axis=0)  # shape: [num_labels]
-
-    # 2) majority count
-    max_pos = num_pos.max()
-
-    # 3) IRLbl per label: majority / label frequency
-    irlbl = max_pos / np.maximum(num_pos, 1)  # avoid division by zero
-
-    # 4) log(1 + IRLbl) weights (Principal Odor Map style)
-    alpha_np = np.log1p(irlbl)  # log(1 + IRLbl)
-
-
-    pos_weight = torch.tensor(alpha_np, dtype=torch.float32, device=device)
-
     # Create model
     model = ChembertaMultiLabelClassifier(
         pretrained=DEFAULT_PRETRAINED_NAME,
@@ -355,9 +331,9 @@ def train_chemberta_multilabel_model(
         dropout=args.dropout,
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
-        pos_weight=pos_weight,
-        gamma = gamma,
-        alpha = alpha,
+        pos_weight=None,
+        gamma = args.gamma,
+        alpha = args.alpha,
         pooling_strat=args.pooling_strat,
     )
 
@@ -390,7 +366,7 @@ def train_chemberta_multilabel_model(
         report_to=["tensorboard"],
     )
 
-    compute_metrics = get_multilabel_compute_metrics_fn(threshold=threshold)
+    compute_metrics = get_multilabel_compute_metrics_fn(threshold=args.threshold)
 
     trainer = Trainer(
         model=model,
@@ -410,12 +386,12 @@ def train_chemberta_multilabel_model(
     print("\nEvaluating model on test set...")
     metrics = trainer.evaluate(eval_dataset=test_dataset)
 
-    f1_macro = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=threshold)
+    f1_macro = evaluate_per_label_metrics(trainer, test_dataset, target_cols, threshold=args.threshold)
 
     predictions_output = trainer.predict(test_dataset)
     logits = predictions_output.predictions
     probs = 1 / (1 + np.exp(-logits))
-    preds = (probs >= threshold).astype(int)
+    preds = (probs >= args.threshold).astype(int)
     labels = predictions_output.label_ids
 
     print(f"\nModel parameters:")
@@ -443,6 +419,9 @@ def train_chemberta_multilabel_model(
         "num_mlp_layers": args.num_mlp_layers,
         "epochs": args.epochs,
         "num_labels": num_labels,
+        "threshold": args.threshold,
+        "gamma": args.gamma,
+        "alpha": args.alpha,
     }
     hyperparams_path = os.path.join(output_dir, "hyperparameters.json")
     with open(hyperparams_path, "w") as f:

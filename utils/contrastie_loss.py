@@ -158,7 +158,8 @@ class ChembertaMultiLabelClassifier(nn.Module):
         else:
             pooled_dim = hidden_size
 
-        #self.query_vector = nn.Parameter(torch.randn(hidden_size))
+        if pooling_strat == "attention":
+            self.query_vector = nn.Parameter(torch.randn(hidden_size))
 
         # Include extra numerical features
         if num_features > 0:
@@ -630,13 +631,6 @@ def train_chemberta_multilabel_model(
     num_labels = len(target_cols)
 
     # Compute class-wise alpha if requested
-    alpha_tensor = None
-    if alpha is not None:
-        pos_counts = targets_train.sum(axis=0)
-        neg_counts = targets_train.shape[0] - pos_counts
-        alpha_np = alpha * (neg_counts / (pos_counts + 1e-8))
-        alpha_tensor = torch.tensor(alpha_np, dtype=torch.float32, device=device)
-        print("Using alpha:", alpha_np)
 
     # Whether to use contrastive training
     use_contrastive = getattr(args, "use_contrastive", False)
@@ -685,7 +679,7 @@ def train_chemberta_multilabel_model(
         num_mlp_layers=args.num_mlp_layers,
         pos_weight=None,
         gamma=gamma,
-        alpha=alpha_tensor,
+        alpha=alpha,
         pooling_strat=args.pooling_strat,
         contrastive_weight=contrastive_weight if use_contrastive else 0.0,
         contrastive_temperature=contrastive_temperature,
