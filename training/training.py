@@ -7,6 +7,7 @@ import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
@@ -116,8 +117,8 @@ def train_mlc():
     smell_mlc_parser = argparse.Namespace(**smell_mlc_best)
 
     #plot_pca(args=smell_mlc_parser)
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
-    # %%
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
     results, best_output = grid_search_gamma_alpha(
