@@ -465,6 +465,7 @@ def train_molformer_multilabel_model(
         logging_first_step=True,
         seed=args.random_seed,
         report_to=["tensorboard"],
+        save_safetensors=False,
     )
 
     compute_metrics = get_multilabel_compute_metrics_fn(threshold=args.threshold)
