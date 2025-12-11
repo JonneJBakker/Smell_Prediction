@@ -115,7 +115,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
         y_prob = preds_ds  # fallback, if it’s already a raw array
 
     # Use the SAME threshold as ChemBERTa
-    threshold = 0.25  # or 0.25 if you want to match your trainer/eval
+    threshold = 0.4  # or 0.25 if you want to match your trainer/eval
 
     y_pred = (y_prob >= threshold).astype(int)
 

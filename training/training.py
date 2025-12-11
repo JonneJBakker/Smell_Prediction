@@ -8,7 +8,7 @@ import argparse
 #from utils.normalizing import normalize_csv
 from utils.chemberta_workflows import train_chemberta_multilabel_model
 from utils.molformer_workflows import train_molformer_multilabel_model
-#from utils.make_pom import plot_pca
+from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_copy import grid_search_gamma_alpha, get_val_probs_and_labels, \
     #find_best_global_threshold, get_test_probs_and_labels, find_best_thresholds_per_label
@@ -74,7 +74,7 @@ def train_mlc():
         'random_seed': RANDOM_SEED,
         'lambda_energy': 0.2,
         'lambda_corr': 0.2,
-        'pooling_strat': 'cls_mean',
+        'pooling_strat': 'cls',
         'gamma': 2.0292623653896453,
         'alpha': 0.22833816670574952,
         'threshold': 0.3492848181402972,
@@ -116,9 +116,9 @@ def train_mlc():
     }
     smell_mlc_parser = argparse.Namespace(**smell_mlc_best)
 
-    #plot_pca(args=smell_mlc_parser)
+    plot_pca(args=smell_mlc_parser)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
-    molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
     results, best_output = grid_search_gamma_alpha(

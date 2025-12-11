@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 from PIL._imaging import display
-from transformers import RobertaTokenizerFast
+from transformers import RobertaTokenizerFast, AutoTokenizer
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import umap
@@ -20,6 +20,12 @@ from utils.chemberta_workflows import (  # <- change to your actual filename/mod
     mean_pool
 )
 
+from utils.molformer_workflows import (
+    MolformerMultiLabelClassifier,
+    MolformerDataset,
+    DEFAULT_MOLFORMER_NAME
+)
+
 def chemberta_predict_embedding(model, dataset, device, batch_size=256):
     model.eval()
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -30,7 +36,7 @@ def chemberta_predict_embedding(model, dataset, device, batch_size=256):
             attention_mask = batch["attention_mask"].to(device)
 
             # Get RoBERTa outputs
-            outputs = model.roberta(input_ids=input_ids, attention_mask=attention_mask)
+            outputs = model.backbone(input_ids=input_ids, attention_mask=attention_mask)
             token_embs = outputs.last_hidden_state  # (B, L, H)
 
             # Use the same pooling as in your forward (e.g. "max_mean")
@@ -68,27 +74,30 @@ def plot_pca(args):
     # --- config you already know from training ---
     smiles_col = args.smiles_column               # same as args.smiles_column
     target_cols = args.target_columns             # same list as args.target_columns
-    output_dir = "runs/optuna_focal_2/trial_11/chemberta_multilabel_model_final.bin"  # where Trainer saved the model
+    output_dir = "trained_models/molformer_multilabel_20251204_121127/molformer_multilabel_model_final.bin"  # where Trainer saved the model
 
     # Load data you want to visualize (can be train+val+test or full dataset)
     df = pd.read_csv("Data/splits/train_stratified80.csv")
 
     num_labels = len(target_cols)
 
-    tokenizer = RobertaTokenizerFast.from_pretrained(DEFAULT_PRETRAINED_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(
+        DEFAULT_MOLFORMER_NAME,
+        trust_remote_code=True,
+    )
 
     # Dummy targets just to satisfy ChembertaDataset (we don't use them)
     dummy_targets = df[target_cols].values.astype(np.float32)
 
-    dataset = ChembertaDataset(
+    dataset = MolformerDataset(
         texts=df[smiles_col].tolist(),
         targets=dummy_targets,
         tokenizer=tokenizer,
     )
 
     # Recreate model with same hyperparams you used for training
-    model = ChembertaMultiLabelClassifier(
-        pretrained=DEFAULT_PRETRAINED_NAME,
+    model = MolformerMultiLabelClassifier(
+        pretrained=DEFAULT_MOLFORMER_NAME,
         num_labels=num_labels,
         dropout=args.dropout,           # set to your args.dropout
         hidden_channels=args.hidden_channels,   # your args.hidden_channels
@@ -100,7 +109,7 @@ def plot_pca(args):
 
     state_dict = torch.load(os.path.join(output_dir),
                             map_location=device)
-    model.load_state_dict(state_dict)
+    #model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
 
@@ -109,7 +118,7 @@ def plot_pca(args):
 
 def pom_frame(model, dataset, device, target_cols, is_preds=False, threshold=0.35):
     pom_embeds = chemberta_predict_embedding(model, dataset, device)
-    y_preds = get_probabilities(model, dataset, device)  # the sigmoid(logits) part we wrote earlier
+    #y_preds = get_probabilities(model, dataset, device)  # the sigmoid(logits) part we wrote earlier
     required_desc = list(target_cols)
     type1 = {'floral': '#F3F1F7', 'subs': {'muguet': '#FAD7E6', 'lavender': '#8883BE', 'jasmin': '#BD81B7'}}
     type2 = {'meaty': '#F5EBE8', 'subs': {'savory': '#FBB360', 'beefy': '#7B382A', 'roasted': '#F7A69E'}}
