@@ -10,7 +10,7 @@
 from models.mpnn import train_mpnn
 import pandas as pd
 
-DATA_PATH = r'Data/int_multihot.csv'
+DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
     #stratified_train_val_test_split(data, smiles_col='SMILES', test_size=0.1, val_size=0.1)
@@ -29,6 +29,15 @@ if __name__ == "__main__":
     '''''
     #train_mlc()
     train_mpnn(DATA_PATH)
+    ''''
+      micro_accuracy: 0.0213
+  macro_auroc:    0.8716
+  micro_f1:       0.4229
+  macro_f1:       0.2985
+  samples_f1:     0.4093
+  hamming_loss:   0.0536
+  jaccard_samp:   0.2856
+    '''
     #plot_per_label_metrics(datapath="Data/Metrics/alpha=1.gamma=0.75.csv")
     #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
     #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")
