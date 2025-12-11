@@ -2,12 +2,12 @@
 #from Data.rdkit_pca import RDKitPCA
 #from Data.structure_odor_visualizer import visualize_structure_odor
 #from Data.data_prep import split_data
-#from training.training import train_mlc
+from training.training import train_mlc
 #from training.chemberta_to_ffn import FrozenChemBERTaMultiLabel
 #from Data.data_prep import stratified_train_val_test_split
 #from Data.data_prep import augment_train_csv
 #from Data.analysis import plot_per_label_metrics
-from models.mpnn import train_mpnn
+#from models.mpnn import train_mpnn
 import pandas as pd
 
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     print("Best F1-score alpha:", best_f1_alpha)
     print("Best F1-score:", best_f1)
     '''''
-    #train_mlc()
-    train_mpnn(DATA_PATH)
+    train_mlc()
+    #train_mpnn(DATA_PATH)
     ''''
       micro_accuracy: 0.0213
   macro_auroc:    0.8716

@@ -74,7 +74,7 @@ def train_mlc():
         'random_seed': RANDOM_SEED,
         'lambda_energy': 0.2,
         'lambda_corr': 0.2,
-        'pooling_strat': 'cls',
+        'pooling_strat': 'cls_mean',
         'gamma': 2.0292623653896453,
         'alpha': 0.22833816670574952,
         'threshold': 0.3492848181402972,
@@ -116,8 +116,8 @@ def train_mlc():
     }
     smell_mlc_parser = argparse.Namespace(**smell_mlc_best)
 
-    plot_pca(args=smell_mlc_parser)
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    #plot_pca(args=smell_mlc_parser)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
