@@ -18,7 +18,7 @@ import pandas as pd
 def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
     df = pd.read_csv(filepath)
 
-    TASKS = [col for col in df.columns if col not in ['SMILES']]
+    TASKS = [col for col in df.columns if col not in ['nonStereoSMILES', 'descriptors']]
 
 
 
