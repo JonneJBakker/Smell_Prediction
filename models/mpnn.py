@@ -23,7 +23,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
 
 
     featurizer = GraphFeaturizer()
-    smiles_field = 'SMILES'
+    smiles_field = 'nonStereoSMILES'
     loader = dc.data.CSVLoader(tasks=TASKS,
                        feature_field=smiles_field,
                        featurizer=featurizer)
