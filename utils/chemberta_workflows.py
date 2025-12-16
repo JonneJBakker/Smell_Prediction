@@ -14,6 +14,7 @@ import argparse
 
 import numpy as np
 import pandas as pd
+from peft import LoraConfig, get_peft_model, TaskType
 import torch
 from sklearn.metrics import (
     precision_score, recall_score, classification_report,
@@ -180,10 +181,22 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.pooling_strat = pooling_strat
 
 
-        ''''#freeze language model
+
         for param in self.roberta.parameters():
              param.requires_grad = False
-        '''
+
+        lora_cfg = LoraConfig(
+            task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
+            r=8,
+            lora_alpha=16,
+            lora_dropout=0.05,
+            bias="none",
+            target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
+        )
+
+        self.roberta = get_peft_model(self.roberta, lora_cfg)
+
+        self.roberta.print_trainable_parameters()
 
         # If we want attention pooling
         if self.pooling_strat == "attention":
