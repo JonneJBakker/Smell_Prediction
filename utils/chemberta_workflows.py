@@ -170,6 +170,9 @@ class ChembertaMultiLabelClassifier(nn.Module):
         pos_weight=None,
         gamma = 0.75,
         alpha = None,
+        gamma_pos=0.0,
+        gamma_neg=4.0,
+        asl_clip=0.0,
         pooling_strat = "max_mean",
     ):
         super().__init__()
@@ -205,9 +208,9 @@ class ChembertaMultiLabelClassifier(nn.Module):
         )
 
         self.loss_fct = AsymmetricFocalLoss(
-            gamma_pos=0.0,  # often 0 or small
-            gamma_neg=4.0,  # commonly larger
-            clip=0.05,  # try 0.0 or 0.05
+            gamma_pos=gamma_pos,  # often 0 or small
+            gamma_neg=gamma_neg,  # commonly larger
+            clip=asl_clip,  # try 0.0 or 0.05
             reduction="mean",
             pos_weight=None,  # or a tensor of shape [num_labels]
         )
@@ -405,6 +408,9 @@ def train_chemberta_multilabel_model(
         gamma = args.gamma,
         alpha = args.alpha,
         pooling_strat=args.pooling_strat,
+        gamma_pos=args.gamma_pos,
+        gamma_neg=args.gamma_neg,
+        asl_clip=args.asl_clip,
     )
 
     # Setup training arguments

@@ -66,6 +66,10 @@ class ArgsForTraining:
         self.alpha = None
         self.pooling_strat = None   # "mean_pooling", "cls", or "attention"
 
+        #asym focal loss
+        self.gamma_pos = None
+        self.gamma_neg = None
+        self.asl_clip = None
 
 def make_objective(cli_args):
     """
@@ -78,23 +82,14 @@ def make_objective(cli_args):
 
     def objective(trial: optuna.Trial) -> float:
         # ----- Hyperparameter search space -----
-        weight_decay = trial.suggest_float("l2_lambda", 0.01, 0.02, log=True)
-
-        dropout = trial.suggest_float("dropout", 0.1, 0.5)
-        hidden_channels = trial.suggest_categorical("hidden_channels", [384, 512, 1024])
 
         # classification threshold
-        threshold = trial.suggest_float("threshold", 0.2, 0.35)
+        threshold = trial.suggest_float("threshold", 0.15, 0.4)
 
-        # focal loss hyperparameters
-        gamma = trial.suggest_float("gamma", 1.75, 2.25)
-        alpha = trial.suggest_float("alpha", 0.1, 0.5)  # scalar alpha ∈ [0,1]
-
-        # pooling strategy: mean, CLS, or attention
-        pooling_strat = trial.suggest_categorical(
-            "pooling_strat",
-            ["cls_mean", "max_mean"],
-        )
+        # ASL hyperparameters
+        gamma_pos = trial.suggest_float("gamma_pos", 0.0, 2.0)
+        gamma_neg = trial.suggest_float("gamma_neg", 1.0, 6.0)
+        asl_clip = trial.suggest_float("asl_clip", 0.0, 0.1)
 
         # ----- Build args expected by train_chemberta_multilabel_model -----
         args = ArgsForTraining()
@@ -107,17 +102,23 @@ def make_objective(cli_args):
         args.epochs = 30
         args.batch_size = 32
         args.lr = 0.001
-        args.l2_lambda = weight_decay
+        args.l2_lambda = 0.015388857951581413
         args.l1_lambda = 0.0
 
-        args.dropout = dropout
-        args.hidden_channels = hidden_channels
+        args.dropout = 0.11414895045246401
+        args.hidden_channels = 256
         args.num_mlp_layers = 2
         args.random_seed = cli_args.seed
 
-        args.gamma = gamma
-        args.alpha = alpha
-        args.pooling_strat = pooling_strat
+        args.gamma = 2
+        args.alpha = 0.25
+
+        args.gamma_pos = gamma_pos
+        args.gamma_neg = gamma_neg
+        args.asl_clip = asl_clip
+
+        args.threshold = threshold
+        args.pooling_strat ="cls_mean"
 
         os.makedirs(args.output_dir, exist_ok=True)
 
@@ -131,9 +132,6 @@ def make_objective(cli_args):
             df_test=df_val,
             df_val=df_val,
             device=device,
-            threshold=threshold,
-            gamma=gamma,
-            alpha=alpha,
             # we'll wire pooling_strat inside chemberta_workflows.py
         )
 
