@@ -220,12 +220,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
-        self.loss_fct = AsymmetricFocalLoss(
-            gamma_pos=gamma_pos,  # often 0 or small
-            gamma_neg=gamma_neg,  # commonly larger
-            clip=asl_clip,  # try 0.0 or 0.05
+        self.loss_fct = FocalLoss(
+            gamma=gamma,
+            alpha=alpha,
             reduction="mean",
-            pos_weight=None,  # or a tensor of shape [num_labels]
         )
 
         ''''
