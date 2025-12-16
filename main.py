@@ -3,6 +3,8 @@
 #from Data.structure_odor_visualizer import visualize_structure_odor
 #from Data.data_prep import split_data
 from training.training import train_mlc
+from utils.chemberta_workflows import sweep_thresholds_from_saved_results
+
 #from training.chemberta_to_ffn import FrozenChemBERTaMultiLabel
 #from Data.data_prep import stratified_train_val_test_split
 #from Data.data_prep import augment_train_csv
@@ -27,6 +29,13 @@ if __name__ == "__main__":
     print("Best F1-score alpha:", best_f1_alpha)
     print("Best F1-score:", best_f1)
     '''''
+    #results_path = "cberta_2layer_256_cls.json"
+    #df_thresh, best = sweep_thresholds_from_saved_results(
+        #results_path,
+        #metric="macro_f1",  # or "samples_f1", "micro_f1", ...
+    #)
+
+    #print("Best threshold:", best["threshold"])
     train_mlc()
     #train_mpnn(DATA_PATH)
     ''''

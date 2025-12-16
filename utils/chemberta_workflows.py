@@ -37,6 +37,75 @@ from models.simple_mlp import SimpleMLP
 
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
 
+
+class AsymmetricFocalLoss(nn.Module):
+    """
+    Asymmetric Focal Loss for multi-label classification (logits + {0,1} targets).
+
+    Args:
+        gamma_pos: focusing for positive samples
+        gamma_neg: focusing for negative samples (usually larger than gamma_pos)
+        clip: optional probability clipping for negatives (e.g. 0.05)
+        eps: numerical stability
+        reduction: 'mean', 'sum', or 'none'
+        pos_weight: optional tensor broadcastable to targets (e.g. shape [num_labels])
+                    similar spirit to BCEWithLogitsLoss(pos_weight=...)
+    """
+    def __init__(
+        self,
+        gamma_pos: float = 0.0,
+        gamma_neg: float = 4.0,
+        clip: float = 0.05,
+        eps: float = 1e-8,
+        reduction: str = "mean",
+        pos_weight=None,
+    ):
+        super().__init__()
+        self.gamma_pos = gamma_pos
+        self.gamma_neg = gamma_neg
+        self.clip = clip
+        self.eps = eps
+        self.reduction = reduction
+        self.pos_weight = pos_weight
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        # probabilities
+        prob = torch.sigmoid(logits)
+        prob_pos = prob
+        prob_neg = 1.0 - prob
+
+        # optional negative clipping (helps prevent easy negatives dominating)
+        if self.clip and self.clip > 0:
+            prob_neg = torch.clamp(prob_neg + self.clip, max=1.0)
+
+        # log-probs (stable)
+        log_pos = torch.log(torch.clamp(prob_pos, min=self.eps))
+        log_neg = torch.log(torch.clamp(prob_neg, min=self.eps))
+
+        # base CE for multi-label: y*log(p) + (1-y)*log(1-p)
+        loss = targets * log_pos + (1.0 - targets) * log_neg
+
+        # optional positive weighting (broadcastable)
+        if self.pos_weight is not None:
+            loss = loss * (targets * self.pos_weight + (1.0 - targets))
+
+        # asymmetric focusing
+        if self.gamma_pos != 0.0 or self.gamma_neg != 0.0:
+            pt = prob_pos * targets + prob_neg * (1.0 - targets)
+            gamma = self.gamma_pos * targets + self.gamma_neg * (1.0 - targets)
+            focal_weight = torch.pow(1.0 - pt, gamma)
+            loss = loss * focal_weight
+
+        # negative sign because we used log-likelihood form
+        loss = -loss
+
+        if self.reduction == "mean":
+            return loss.mean()
+        elif self.reduction == "sum":
+            return loss.sum()
+        return loss
+
+
 class FocalLoss(nn.Module):
     """
     Multi-label focal loss.
@@ -135,11 +204,12 @@ class ChembertaMultiLabelClassifier(nn.Module):
             dropout,
         )
 
-
-        self.loss_fct = FocalLoss(
-            alpha=alpha,
-            gamma=gamma,
+        self.loss_fct = AsymmetricFocalLoss(
+            gamma_pos=0.0,  # often 0 or small
+            gamma_neg=4.0,  # commonly larger
+            clip=0.05,  # try 0.0 or 0.05
             reduction="mean",
+            pos_weight=None,  # or a tensor of shape [num_labels]
         )
 
         ''''
@@ -521,3 +591,71 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     print(f" Saved per-label metrics to {csv_path}")
 
     return np.round(f1_score(labels, preds, average="macro"), 3)
+
+import json
+import numpy as np
+import pandas as pd
+from sklearn.metrics import (
+    f1_score,
+    jaccard_score,
+    hamming_loss,
+    accuracy_score,
+)
+
+def sweep_thresholds_from_saved_results(
+    results_path,
+    metric="macro_f1",
+    thresholds=None,
+):
+    """
+    Sweep over thresholds for a trained ChemBERTa model using saved probs/targets.
+
+    Args:
+        results_path: path to all_results.json saved by train_chemberta_multilabel_model
+        metric: which metric to use to select the best threshold.
+                One of: "macro_f1", "micro_f1", "samples_f1",
+                        "jaccard_samples", "micro_accuracy"
+        thresholds: iterable of thresholds to try. If None, uses np.linspace(0.05, 0.95, 19)
+
+    Returns:
+        df: DataFrame with metrics for each threshold
+        best_row: row of df with the best value for `metric`
+    """
+    if thresholds is None:
+        thresholds = np.linspace(0.05, 0.95, 19)
+
+    with open(results_path, "r") as f:
+        results = json.load(f)
+
+    probs = np.array(results["probs"])    # shape (N, num_labels)
+    labels = np.array(results["targets"]) # shape (N, num_labels)
+
+    rows = []
+    for t in thresholds:
+        preds = (probs >= t).astype(int)
+
+        micro_acc = accuracy_score(labels, preds)
+        macro_f1 = f1_score(labels, preds, average="macro", zero_division=0)
+        micro_f1 = f1_score(labels, preds, average="micro", zero_division=0)
+        samples_f1 = f1_score(labels, preds, average="samples", zero_division=0)
+        jaccard_samples = jaccard_score(labels, preds, average="samples", zero_division=0)
+        hamm = hamming_loss(labels, preds)
+
+        rows.append({
+            "threshold": float(t),
+            "micro_accuracy": micro_acc,
+            "macro_f1": macro_f1,
+            "micro_f1": micro_f1,
+            "samples_f1": samples_f1,
+            "jaccard_samples": jaccard_samples,
+            "hamming_loss": hamm,
+        })
+
+    df = pd.DataFrame(rows)
+    best_idx = df[metric].idxmax()
+    best_row = df.loc[best_idx]
+
+    print("\nBest threshold based on", metric)
+    print(best_row)
+
+    return df, best_row
