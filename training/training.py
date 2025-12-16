@@ -80,6 +80,34 @@ def train_mlc():
         'threshold': 0.3492848181402972,
     }
 
+
+    asym_loss_best = {
+        'train_csv': '../Data/splits/train_stratified80.csv',
+        'test_csv': '../Data/splits/test_stratified10.csv',
+        'target_columns': target_cols,
+        'smiles_column': 'nonStereoSMILES',
+        'output_dir': f'../trained_models/',
+        'epochs': 60,
+        'batch_size': 32,
+        'lr': 0.001,
+        'encoder_lr': 1e-5,
+        'head_lr': 1e-4,
+        'l1_lambda': 0.0,
+        'l2_lambda': 0.015388857951581413,
+        'dropout': 0.11414895045246401,
+        'hidden_channels': 256,
+        'num_mlp_layers': 2,
+        'random_seed': RANDOM_SEED,
+        'lambda_energy': 0.2,
+        'lambda_corr': 0.2,
+        'pooling_strat': 'cls_mean',
+        'gamma': 2.0292623653896453,
+        'alpha': 0.22833816670574952,
+        'threshold' : 0.3581106602001054,
+        'gamma_pos' : 0.4246782213565523,
+        'gamma_neg' : 1.909124836035503,
+        'asl_clip' : 0.01834045098534338,
+    }
     cil_loss = {
         'train_csv': '../Data/splits/train_stratified80.csv',
         'test_csv': '../Data/splits/test_stratified10.csv',
@@ -114,7 +142,7 @@ def train_mlc():
         # final threshold for classification
         "threshold" : 0.27,
     }
-    smell_mlc_parser = argparse.Namespace(**smell_mlc_best)
+    smell_mlc_parser = argparse.Namespace(**asym_loss_best)
 
     #plot_pca(args=smell_mlc_parser)
     smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)

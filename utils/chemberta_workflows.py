@@ -180,10 +180,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self.pooling_strat = pooling_strat
 
 
-        #freeze language model
+        ''''#freeze language model
         for param in self.roberta.parameters():
              param.requires_grad = False
-
+        '''
 
         # If we want attention pooling
         if self.pooling_strat == "attention":
