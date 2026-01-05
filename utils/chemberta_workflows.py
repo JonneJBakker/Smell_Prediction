@@ -174,6 +174,9 @@ class ChembertaMultiLabelClassifier(nn.Module):
         gamma_pos=0.0,
         gamma_neg=4.0,
         asl_clip=0.0,
+        lora_r=8,
+        lora_alpha=16,
+        lora_dropout=0.05,
         pooling_strat = "max_mean",
     ):
         super().__init__()
@@ -187,9 +190,9 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         lora_cfg = LoraConfig(
             task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
-            r=8,
-            lora_alpha=16,
-            lora_dropout=0.05,
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
             bias="none",
             target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
         )
@@ -448,6 +451,9 @@ def train_chemberta_multilabel_model(
         gamma_pos=args.gamma_pos,
         gamma_neg=args.gamma_neg,
         asl_clip=args.asl_clip,
+        lora_r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
     )
 
     # Setup training arguments

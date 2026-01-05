@@ -4,6 +4,7 @@ import argparse
 import optuna
 import pandas as pd
 import torch
+from huggingface_hub import list_rejected_access_requests
 
 from utils.chemberta_workflows import train_chemberta_multilabel_model
 
@@ -50,7 +51,7 @@ class ArgsForTraining:
         self.train_csv = None
         self.output_dir = None
 
-        self.epochs = 30
+        self.epochs = 10
         self.batch_size = 32
         self.lr = 0.001
         self.l2_lambda = None
@@ -71,6 +72,11 @@ class ArgsForTraining:
         self.gamma_neg = None
         self.asl_clip = None
 
+        #lora args
+        self.lora_r = None
+        self.lora_alpha = None
+        self.lora_dropout = None
+
 def make_objective(cli_args):
     """
     Build Optuna objective for the focal-loss ChemBERTa baseline.
@@ -84,12 +90,16 @@ def make_objective(cli_args):
         # ----- Hyperparameter search space -----
 
         # classification threshold
-        threshold = trial.suggest_float("threshold", 0.15, 0.4)
+        threshold = 0.35
 
         # ASL hyperparameters
-        gamma_pos = trial.suggest_float("gamma_pos", 0.0, 2.0)
-        gamma_neg = trial.suggest_float("gamma_neg", 1.0, 6.0)
-        asl_clip = trial.suggest_float("asl_clip", 0.0, 0.1)
+        gamma_pos = None
+        gamma_neg = None
+        asl_clip = None
+
+        lora_r = trial.suggest_categorical("lora_r", [4, 8, 16, 32])
+        lora_alpha = trial.suggest_categorical("lora_alpha", [8, 16, 32, 64, 128])
+        lora_dropout = trial.suggest_float("lora_dropout", 0.0, 0.15)
 
         # ----- Build args expected by train_chemberta_multilabel_model -----
         args = ArgsForTraining()
@@ -99,7 +109,7 @@ def make_objective(cli_args):
         args.train_csv = cli_args.train_csv
         args.output_dir = os.path.join(cli_args.output_dir, f"trial_{trial.number}")
 
-        args.epochs = 30
+        args.epochs = 15
         args.batch_size = 32
         args.lr = 0.001
         args.l2_lambda = 0.015388857951581413
@@ -116,6 +126,10 @@ def make_objective(cli_args):
         args.gamma_pos = gamma_pos
         args.gamma_neg = gamma_neg
         args.asl_clip = asl_clip
+
+        args.lora_r = lora_r
+        args.lora_alpha = lora_alpha
+        args.lora_dropout = lora_dropout
 
         args.threshold = threshold
         args.pooling_strat ="cls_mean"
