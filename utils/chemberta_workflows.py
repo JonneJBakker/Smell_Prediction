@@ -369,6 +369,32 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
 
     return compute_metrics
 
+def find_peft_dir(root_dir: str) -> str:
+    """Return a directory that contains adapter_config.json (root or latest checkpoint-*)."""
+    root_dir = os.path.abspath(root_dir)
+
+    # root itself?
+    if os.path.exists(os.path.join(root_dir, "adapter_config.json")):
+        return root_dir
+
+    # search checkpoint-* subdirs
+    ckpts = []
+    if os.path.isdir(root_dir):
+        for name in os.listdir(root_dir):
+            p = os.path.join(root_dir, name)
+            if os.path.isdir(p) and name.startswith("checkpoint-"):
+                if os.path.exists(os.path.join(p, "adapter_config.json")):
+                    ckpts.append(p)
+
+    if not ckpts:
+        raise FileNotFoundError(
+            f"Can't find adapter_config.json in '{root_dir}' or any checkpoint-* subdir. "
+            f"Files in root: {os.listdir(root_dir) if os.path.isdir(root_dir) else 'N/A'}"
+        )
+
+    ckpts.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return ckpts[0]
+
 
 def train_chemberta_multilabel_model(
     args, df_train, df_test, df_val, device=None,
@@ -492,9 +518,21 @@ def train_chemberta_multilabel_model(
     tokenizer.save_pretrained(output_dir)
     AutoConfig.from_pretrained(DEFAULT_PRETRAINED_NAME).save_pretrained(output_dir)
 
+    # IMPORTANT: ensure adapter files exist at output_dir (or at least somewhere we can find)
+    # (This is safe even if trainer.save_model already did it.)
+    model.roberta.save_pretrained(output_dir)
+
     model_path = os.path.join(output_dir, "chemberta_multilabel_model_final.bin")
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
+
+    # ---- MERGE LORA INTO BASE MODEL FOR TL COMPATIBILITY ----
+    print("Output dir:", os.path.abspath(output_dir))
+    print("Root files:", os.listdir(output_dir))
+
+    peft_dir = find_peft_dir(output_dir)
+    print("Using PEFT dir:", peft_dir)
+    print("PEFT dir files:", os.listdir(peft_dir))
 
     # 1) Load base Roberta
     base_roberta = AutoModel.from_pretrained(
@@ -503,7 +541,7 @@ def train_chemberta_multilabel_model(
     )
 
     # 2) Load trained adapter and merge
-    peft_roberta = PeftModel.from_pretrained(base_roberta, output_dir)
+    peft_roberta = PeftModel.from_pretrained(base_roberta, peft_dir)
     merged_roberta = peft_roberta.merge_and_unload()
 
     # 3) Swap merged backbone into your classifier
@@ -514,7 +552,6 @@ def train_chemberta_multilabel_model(
         output_dir, "chemberta_multilabel_model_final_merged_plain.bin"
     )
     torch.save(model.state_dict(), plain_model_path)
-
     print(f"Merged plain model saved to {plain_model_path}")
 
     hyperparams = {

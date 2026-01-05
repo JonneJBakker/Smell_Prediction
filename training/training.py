@@ -87,7 +87,7 @@ def train_mlc():
         'target_columns': target_cols,
         'smiles_column': 'nonStereoSMILES',
         'output_dir': f'../trained_models/',
-        'epochs': 60,
+        'epochs': 10,
         'batch_size': 32,
         'lr': 0.001,
         'encoder_lr': 1e-5,
