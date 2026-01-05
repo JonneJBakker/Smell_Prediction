@@ -14,7 +14,7 @@ import argparse
 
 import numpy as np
 import pandas as pd
-from peft import LoraConfig, get_peft_model, TaskType
+from peft import LoraConfig, get_peft_model, TaskType, PeftModel
 import torch
 from sklearn.metrics import (
     precision_score, recall_score, classification_report,
@@ -30,7 +30,7 @@ from transformers import (
     RobertaTokenizerFast,
     Trainer,
     TrainingArguments,
-    AutoConfig
+    AutoConfig, AutoModel
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -495,6 +495,27 @@ def train_chemberta_multilabel_model(
     model_path = os.path.join(output_dir, "chemberta_multilabel_model_final.bin")
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
+
+    # 1) Load base Roberta
+    base_roberta = AutoModel.from_pretrained(
+        DEFAULT_PRETRAINED_NAME,
+        add_pooling_layer=False,
+    )
+
+    # 2) Load trained adapter and merge
+    peft_roberta = PeftModel.from_pretrained(base_roberta, output_dir)
+    merged_roberta = peft_roberta.merge_and_unload()
+
+    # 3) Swap merged backbone into your classifier
+    model.roberta = merged_roberta
+
+    # 4) Save a *plain* state_dict (NO peft / lora keys)
+    plain_model_path = os.path.join(
+        output_dir, "chemberta_multilabel_model_final_merged_plain.bin"
+    )
+    torch.save(model.state_dict(), plain_model_path)
+
+    print(f"Merged plain model saved to {plain_model_path}")
 
     hyperparams = {
         "hidden_channels": args.hidden_channels,
