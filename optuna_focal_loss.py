@@ -176,7 +176,7 @@ def main():
     study = optuna.create_study(
         direction="maximize",
         sampler=sampler,
-        study_name="chemberta_focal_tuning",
+        study_name="chemberta_lora_tuning",
     )
 
     objective = make_objective(cli_args)
