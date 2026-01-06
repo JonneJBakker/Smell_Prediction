@@ -87,7 +87,7 @@ def train_mlc():
         'target_columns': target_cols,
         'smiles_column': 'nonStereoSMILES',
         'output_dir': f'../trained_models/',
-        'epochs': 10,
+        'epochs': 40,
         'batch_size': 32,
         'lr': 0.001,
         'encoder_lr': 1e-5,
@@ -107,6 +107,10 @@ def train_mlc():
         'gamma_pos' : 0.4246782213565523,
         'gamma_neg' : 1.909124836035503,
         'asl_clip' : 0.01834045098534338,
+        'lora_r': 32,
+        'lora_alpha': 32,
+        'lora_dropout': 0.017380358928769456
+
     }
     cil_loss = {
         'train_csv': '../Data/splits/train_stratified80.csv',
