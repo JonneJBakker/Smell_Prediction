@@ -15,6 +15,8 @@ from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.chemberta_workflows_cli_loss import train_chemberta_multilabel_model
 from sklearn.metrics import f1_score
 
+from utils.chemberta_workflows_prefix import train_chemberta_multilabel_model_prefix
+
 # %%
 RANDOM_SEED = 19237
 # %%
@@ -149,7 +151,8 @@ def train_mlc():
     smell_mlc_parser = argparse.Namespace(**asym_loss_best)
 
     #plot_pca(args=smell_mlc_parser)
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    smell_mlc_results, f1_macro = train_chemberta_multilabel_model_prefix(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     ''''
