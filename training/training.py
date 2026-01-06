@@ -107,7 +107,7 @@ def train_mlc():
         'gamma_pos' : 0.4246782213565523,
         'gamma_neg' : 1.909124836035503,
         'asl_clip' : 0.01834045098534338,
-        'lora_r': 8,
+        'lora_r': 16,
         'lora_alpha': 16,
         'lora_dropout': 0.1
 
