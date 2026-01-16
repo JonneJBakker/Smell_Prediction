@@ -48,14 +48,14 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     gamma = 0.0
     alpha = None
     if loss_type == "focal":
-        gamma = trial.suggest_float("gamma", 0.0, 4.0)
+        gamma = trial.suggest_float("gamma", 1.75, 2.25)
         # keep alpha scalar; if you later use per-label alpha, extend this
-        alpha = trial.suggest_float("alpha", 0.1, 0.9)
+        alpha = trial.suggest_float("alpha", 0.1, 0.5)
 
     # Optim / training
-    lr = trial.suggest_float("lr", 1e-6, 5e-4, log=True)
+    lr = 0.001
     batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
-    weight_decay = trial.suggest_float("weight_decay", 0.0, 0.1)
+    weight_decay = trial.suggest_float("weight_decay", 0.05, 0.15)
     epochs = 20
 
     # Head
@@ -151,7 +151,7 @@ def main():
 
     study.optimize(
         lambda t: objective(t, df_train=df_train, df_val=df_val, smiles_col=smiles_col, target_cols=target_cols),
-        n_trials=30,
+        n_trials=50,
         show_progress_bar=True,
     )
 
