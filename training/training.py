@@ -2,11 +2,12 @@
 #import sys
 #import os
 #sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from types import SimpleNamespace
 
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
+from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
@@ -25,7 +26,6 @@ def train_mlc():
     train = pd.read_csv("Data/splits/train_stratified80.csv")
     test = pd.read_csv("Data/splits/test_stratified10.csv")
     val = pd.read_csv("Data/splits/val_stratified10.csv")
-
     target_cols = [col for col in train.columns if col not in ['nonStereoSMILES']]
     # Make an args parser
     smell_mlc_defaults = {
@@ -147,12 +147,35 @@ def train_mlc():
         # final threshold for classification
         "threshold" : 0.27,
     }
-    smell_mlc_parser = argparse.Namespace(**asym_loss_best)
+
+    final_args = SimpleNamespace(
+        smiles_column="nonStereoSMILES",
+        target_columns=target_cols,
+        output_dir="final_runs/chemberta_best_long",
+
+        epochs=50,
+        batch_size=8,
+        lr=0.001,
+        l2_lambda=0.06710588932518757,
+        dropout=0.08079026234856405,
+        hidden_channels=512,
+        num_mlp_layers=3,
+        pooling_strat="mean",
+        threshold=0.3624091777658122,
+        random_seed=42,
+
+        loss_type="focal",
+        gamma=2.007878133924727,
+        alpha=0.19252534556671558,
+    )
+
+    #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
 
     #plot_pca(args=smell_mlc_parser)
-    smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
+    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
+    smell_mlc = train_chemberta_multilabel_model(final_args, df_train=train, df_test=test, df_val=val)
     ''''
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,
