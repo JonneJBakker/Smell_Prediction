@@ -435,6 +435,11 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
     metrics = trainer.evaluate(eval_dataset=test_ds)
     test_macro_f1 = evaluate_per_label_metrics(trainer, test_ds, target_cols, threshold=args.threshold)
 
+    print("\nFull test metrics dict:")
+    for k, v in metrics.items():
+        print(f"  {k}: {v}")
+
+    print("\nTest macro-F1 (from predict):", test_macro_f1)
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print("\nModel parameters:")
