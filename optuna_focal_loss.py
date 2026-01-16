@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 from huggingface_hub import list_rejected_access_requests
 
-from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
 
 
 def parse_args():
@@ -42,7 +42,7 @@ def parse_args():
 class ArgsForTraining:
     """
     Minimal args object to satisfy train_chemberta_multilabel_model()
-    from chemberta_workflows.py
+    from chemberta_workflows_lora.py
     """
     def __init__(self):
         self.smiles_column = None
@@ -146,7 +146,7 @@ def make_objective(cli_args):
             df_test=df_val,
             df_val=df_val,
             device=device,
-            # we'll wire pooling_strat inside chemberta_workflows.py
+            # we'll wire pooling_strat inside chemberta_workflows_lora.py
         )
 
         # Optuna will maximize this value

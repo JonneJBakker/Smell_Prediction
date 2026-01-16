@@ -13,7 +13,7 @@ from matplotlib.patches import Patch
 from scipy.stats import gaussian_kde
 from IPython.display import Image
 
-from utils.chemberta_workflows import (  # <- change to your actual filename/module
+from utils.chemberta_workflows_lora import (  # <- change to your actual filename/module
     ChembertaMultiLabelClassifier,
     ChembertaDataset,
     DEFAULT_PRETRAINED_NAME,

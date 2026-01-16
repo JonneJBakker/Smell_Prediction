@@ -1,3 +1,4 @@
+# %%
 import os
 from typing import Optional, List, Tuple, Union, Dict
 import numpy as np
@@ -8,6 +9,17 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from matplotlib.colors import LogNorm
 from itertools import combinations
+import matplotlib as mpl
+k = 1.25
+mpl.rcParams.update({
+    "figure.titlesize": 18 * k,
+    "axes.titlesize": 18*k,
+    "axes.labelsize": 16*k,
+    "xtick.labelsize": 14*k,
+    "ytick.labelsize": 14*k,
+    "legend.fontsize": 14*k,
+    "font.size": 14*k
+})
 
 class SmellFragmentAnalyzer:
     """
@@ -426,9 +438,9 @@ class SmellFragmentAnalyzer:
             plt.colorbar(im)
 
         # --- axes, labels, annotations
-        plt.title(f"Functional Groups vs Smell Classes ({title_suffix})")
-        plt.xlabel("Smell Class")
-        plt.ylabel("Functional Group")
+        plt.title(f"Fragment and Smell Label co-occurence ({scale} scale)")
+        plt.xlabel(f"Smell Label (Top {top_k_smells})")
+        plt.ylabel(f"Fragment (Top {top_k_frags})")
         plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
         plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
 
@@ -441,11 +453,17 @@ class SmellFragmentAnalyzer:
                     plt.text(j, i, text, ha="center", va="center", fontsize=7)
 
         plt.tight_layout()
+        plt.savefig(
+            "figures/fragment_smell_heatmap.pdf",
+            dpi=300,
+            bbox_inches="tight"
+        )
         plt.show()
 
     def plot_smell_cooccurrence_heatmap(
             self,
             top_k_smells: int = 80,
+            hide_diagonal: bool = True,
             scale: str = "log",  # "percentile", "log", "normalize", or "linear"
             annotate: bool = False,
     ) -> None:
@@ -457,6 +475,9 @@ class SmellFragmentAnalyzer:
 
         top_smells = self.get_top_smells(top_k_smells)
         mat = self.smell_co_matrix.loc[top_smells, top_smells].copy()
+
+        if hide_diagonal:
+            np.fill_diagonal(mat.values, 0)
 
         if scale == "normalize":
             mat = mat.div(np.diag(mat), axis=1).fillna(0)
@@ -483,12 +504,17 @@ class SmellFragmentAnalyzer:
         else:
             im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
         plt.colorbar(im)
-        plt.title(f"Smell Co-occurrence (Top {top_k_smells}, {scale} scale)")
-        plt.xlabel("Smell")
-        plt.ylabel("Smell")
+        plt.title(f"Smell Co-occurrence ({scale} scale)")
+        plt.xlabel(f"Smell Label (Top {top_k_smells})")
+        plt.ylabel(f"Smell Label (Top {top_k_smells})")
         plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
         plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
         plt.tight_layout()
+        plt.savefig(
+            "figures/smell_cooccurrence_heatmap.pdf",
+            dpi=300,
+            bbox_inches="tight"
+        )
         plt.show()
 
     import numpy as np
@@ -563,7 +589,7 @@ class SmellFragmentAnalyzer:
             im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
             plt.colorbar(im, label="Correlation")
 
-        plt.title(f"Fragment–Fragment Correlation ({title_suffix})")
+        plt.title(f"Fragment–Fragment correlation ((Top {top_k_frags}, {scale} scale))")
         plt.xlabel("Functional Group")
         plt.ylabel("Functional Group")
         plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
@@ -575,6 +601,11 @@ class SmellFragmentAnalyzer:
                     plt.text(j, i, f"{mat.values[i, j]:.2f}", ha="center", va="center", fontsize=7)
 
         plt.tight_layout()
+        plt.savefig(
+            "figures/fragment_correlation_heatmap.pdf",
+            dpi=300,
+            bbox_inches="tight"
+        )
         plt.show()
 
     def plot_fragment_cooccurrence_heatmap(
@@ -655,9 +686,9 @@ class SmellFragmentAnalyzer:
             im = plt.imshow(mat.values, cmap=cmap, vmin=vmin, vmax=vmax)
             plt.colorbar(im, label="Co-occurrence")
 
-        plt.title(f"Fragment–Fragment Co-occurrence ({title_suffix})")
-        plt.xlabel("Functional Group")
-        plt.ylabel("Functional Group")
+        plt.title(f"Fragment Co-occurrence ({scale} scale)")
+        plt.xlabel(f"Fragment (Top {top_k_frags})")
+        plt.ylabel(f"Fragment (Top {top_k_frags})")
         plt.xticks(ticks=np.arange(mat.shape[1]), labels=mat.columns, rotation=90)
         plt.yticks(ticks=np.arange(mat.shape[0]), labels=mat.index)
 
@@ -667,6 +698,11 @@ class SmellFragmentAnalyzer:
                     plt.text(j, i, f"{mat.values[i, j]:.0f}", ha="center", va="center", fontsize=7)
 
         plt.tight_layout()
+        plt.savefig(
+            "figures/fragment_cooccurrence_heatmap.pdf",
+            dpi=300,
+            bbox_inches="tight"
+        )
         plt.show()
 
     def print_summary_stats(self, top_n: int = 10) -> None:
@@ -690,6 +726,11 @@ class SmellFragmentAnalyzer:
             print(f"Average fragments per molecule: {avg_frags:.2f}")
             print("\nTop fragments:")
             print(frag_counts.sort_values(ascending=False).head(top_n))
+
+            print(f"Total fragment types: {n_frags:,}")
+            print(f"Average fragments per molecule: {avg_frags:.2f}")
+            print("\nBottom fragments:")
+            print(frag_counts.sort_values(ascending=True).head(top_n))
         else:
             print("No fragment columns detected.")
 
@@ -705,6 +746,8 @@ class SmellFragmentAnalyzer:
                 print(f"Average smells per molecule: {avg_smells:.2f}")
                 print("\nTop smell labels:")
                 print(smell_counts.head(top_n))
+                print("\nBottom smell labels:")
+                print(smell_counts.tail(top_n))
         else:
             print("\nNo smell column found.")
 
@@ -814,13 +857,57 @@ class SmellFragmentAnalyzer:
             self.print_summary_stats()
 
 
-# %%
-def plot_per_label_metrics(datapath = "Data/Metrics/alpha=1.gamma=0.75.csv"):
 
-    df_metrics = pd.read_csv(datapath)
-    plt.scatter(df_metrics["frequency"], df_metrics["f1"])
-    plt.xlabel("Label frequency")
-    plt.ylabel("F1 score")
-    plt.title("Per-label F1 vs Prevalence")
-    plt.grid(True)
-    plt.show()
+TARGET_COLUMN = [
+'alcoholic', 'aldehydic', 'alliaceous', 'almond', 'amber', 'animal',
+'anisic', 'apple', 'apricot', 'aromatic', 'balsamic', 'banana', 'beefy',
+'bergamot', 'berry', 'bitter', 'black currant', 'brandy', 'burnt',
+'buttery', 'cabbage', 'camphoreous', 'caramellic', 'cedar', 'celery',
+'chamomile', 'cheesy', 'cherry', 'chocolate', 'cinnamon', 'citrus', 'clean',
+'clove', 'cocoa', 'coconut', 'coffee', 'cognac', 'cooked', 'cooling',
+'cortex', 'coumarinic', 'creamy', 'cucumber', 'dairy', 'dry', 'earthy',
+'ethereal', 'fatty', 'fermented', 'fishy', 'floral', 'fresh', 'fruit skin',
+'fruity', 'garlic', 'gassy', 'geranium', 'grape', 'grapefruit', 'grassy',
+'green', 'hawthorn', 'hay', 'hazelnut', 'herbal', 'honey', 'hyacinth',
+'jasmin', 'juicy', 'ketonic', 'lactonic', 'lavender', 'leafy', 'leathery',
+'lemon', 'lily', 'malty', 'meaty', 'medicinal', 'melon', 'metallic',
+'milky', 'mint', 'muguet', 'mushroom', 'musk', 'musty', 'natural', 'nutty',
+'odorless', 'oily', 'onion', 'orange', 'orangeflower', 'orris', 'ozone',
+'peach', 'pear', 'phenolic', 'pine', 'pineapple', 'plum', 'popcorn',
+'potato', 'powdery', 'pungent', 'radish', 'raspberry', 'ripe', 'roasted',
+'rose', 'rummy', 'sandalwood', 'savory', 'sharp', 'smoky', 'soapy',
+'solvent', 'sour', 'spicy', 'strawberry', 'sulfurous', 'sweaty', 'sweet',
+'tea', 'terpenic', 'tobacco', 'tomato', 'tropical', 'vanilla', 'vegetable',
+'vetiver', 'violet', 'warm', 'waxy', 'weedy', 'winey', 'woody'
+]
+
+analyzer = SmellFragmentAnalyzer(smell_col="descriptors", frag_prefix="fr_")
+analyzer.load("Data/smiles_with_func_groups.csv")
+
+analyzer.build_fragment_smell_matrix(binary_frag_presence=True)
+analyzer.build_smell_cooccurrence()
+analyzer.build_fragment_cooccurrence(mode="binary")
+analyzer.build_fragment_correlation()
+
+
+
+analyzer.plot_fragment_smell_heatmap(
+    top_k_frags=30,
+    top_k_smells=30,
+    scale="log",
+    log_pseudocount=1
+)
+
+analyzer.plot_smell_cooccurrence_heatmap(
+    top_k_smells=30,
+    scale="log"
+)
+
+analyzer.plot_fragment_cooccurrence_heatmap(
+    top_k_frags=30,
+    scale="log",
+    log_pseudocount=1,
+    hide_diagonal=True
+)
+
+analyzer.print_summary_stats(top_n=10)

@@ -6,7 +6,7 @@
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model

@@ -41,7 +41,7 @@ def parse_args():
 class ArgsForTraining:
     """
     Minimal args object to satisfy train_chemberta_multilabel_model()
-    from chemberta_workflows.py
+    from chemberta_workflows_lora.py
     """
     def __init__(self):
         self.smiles_column = None
@@ -143,7 +143,7 @@ def make_objective(cli_args):
             threshold=threshold,
             gamma=gamma,
             alpha=alpha,
-            # we'll wire pooling_strat inside chemberta_workflows.py
+            # we'll wire pooling_strat inside chemberta_workflows_lora.py
         )
 
         # Optuna will maximize this value
