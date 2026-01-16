@@ -160,7 +160,7 @@ def train_mlc():
         dropout=0.08079026234856405,
         hidden_channels=512,
         num_mlp_layers=3,
-        pooling_strat="mean",
+        pooling_strat="cls",
         threshold=0.3624091777658122,
         random_seed=42,
 
