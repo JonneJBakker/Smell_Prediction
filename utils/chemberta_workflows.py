@@ -13,6 +13,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import torch
+from peft import LoraConfig, TaskType, get_peft_model
 from torch import nn
 from torch.utils.data import Dataset
 
@@ -162,6 +163,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
         asl_clip: float = 0.0,
         pos_weight=None,
         freeze_encoder: bool = True,
+        use_lora: bool = True,
+        lora_r: int = 8,
+        lora_alpha: int = 16,
+        lora_dropout: float = 0.1,
     ):
         super().__init__()
         self.pooling_strat = pooling_strat
@@ -171,6 +176,20 @@ class ChembertaMultiLabelClassifier(nn.Module):
         if freeze_encoder:
             for p in self.roberta.parameters():
                 p.requires_grad = False
+
+        if use_lora:
+            lora_cfg = LoraConfig(
+                task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
+                r=lora_r,
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+                bias="none",
+                target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
+            )
+
+            self.roberta = get_peft_model(self.roberta, lora_cfg)
+
+            self.roberta.print_trainable_parameters()
 
         if pooling_strat == "attention":
             self.query_vector = nn.Parameter(torch.randn(self.roberta.config.hidden_size))
@@ -391,6 +410,9 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
         gamma_neg=getattr(args, "gamma_neg", 4.0),
         asl_clip=getattr(args, "asl_clip", 0.0),
         freeze_encoder=True,
+        lora_r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
     )
 
     output_dir = args.output_dir

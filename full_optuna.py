@@ -66,6 +66,11 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     # Metric threshold (used by compute_metrics in workflow)
     threshold = trial.suggest_float("threshold", 0.25, 0.4)
 
+    # Lora
+    lora_r = trial.suggest_categorical("lora_r", [8, 16, 32])
+    lora_alpha = trial.suggest_categorical("lora_alpha", [8, 16, 32, 64])
+    lora_dropout = trial.suggest_float("lora_dropout", 0.0, 0.15)
+
     # Output directory per trial
     out_dir = os.path.join("optuna_runs", f"trial_{trial.number}")
 
@@ -94,6 +99,11 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
         gamma_pos=0.0,
         gamma_neg=4.0,
         asl_clip=0.0,
+
+        # Lora
+        lora_r=lora_r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
     )
 
 
@@ -150,7 +160,7 @@ def main():
 
     study.optimize(
         lambda t: objective(t, df_train=df_train, df_val=df_val, smiles_col=smiles_col, target_cols=target_cols),
-        n_trials=50,
+        n_trials=1,
         show_progress_bar=True,
     )
 
@@ -165,10 +175,10 @@ def main():
     final_args = SimpleNamespace(
         smiles_column=smiles_col,
         target_columns=target_cols,
-        output_dir=os.path.join("final_runs", "chemberta_best"),
-        epochs=50,
+        output_dir=os.path.join("final_runs", "chemberta_lora_best"),
+        epochs=1,
         batch_size=int(best["batch_size"]),
-        lr=float(best["lr"]),
+        lr=0.001,
         l2_lambda=float(best["weight_decay"]),
         dropout=float(best["dropout"]),
         hidden_channels=int(best["hidden_channels"]),
@@ -184,6 +194,10 @@ def main():
         gamma_pos=0.0,
         gamma_neg=4.0,
         asl_clip=0.0,
+
+        lora_r=float(best["lora_r"]),
+        lora_alpha=float(best["lora_alpha"]),
+        lora_dropout=float(best["lora_dropout"]),
     )
 
     os.makedirs(final_args.output_dir, exist_ok=True)
