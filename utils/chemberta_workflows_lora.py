@@ -561,15 +561,20 @@ def train_chemberta_multilabel_model(
         "hidden_channels": args.hidden_channels,
         "lr": args.lr,
         "l2_lambda": args.l2_lambda,
-        "l1_lambda": args.l1_lambda,
         "batch_size": args.batch_size,
         "dropout": args.dropout,
         "num_mlp_layers": args.num_mlp_layers,
+        "pooling_strat": args.pooling_strat,
+        "random_seed": args.random_seed,
+        "loss_type": args.loss_type,
         "epochs": args.epochs,
         "num_labels": num_labels,
         "threshold": args.threshold,
         "gamma": args.gamma,
         "alpha": args.alpha,
+        "lora_r": args.lora_r,
+        "lora_alpha": args.lora_alpha,
+        "lora_dropout": args.lora_dropout,
     }
     hyperparams_path = os.path.join(output_dir, "hyperparameters.json")
     with open(hyperparams_path, "w") as f:

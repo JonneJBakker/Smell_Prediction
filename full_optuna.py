@@ -48,7 +48,7 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     gamma = 0.0
     alpha = None
     if loss_type == "focal":
-        gamma = trial.suggest_float("gamma", 1.75, 2.25)
+        gamma = trial.suggest_float("gamma", 1.75, 2.5)
         # keep alpha scalar; if you later use per-label alpha, extend this
         alpha = trial.suggest_float("alpha", 0.1, 0.5)
 
@@ -61,7 +61,7 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     # Head
     dropout = trial.suggest_float("dropout", 0.0, 0.5)
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    num_mlp_layers = trial.suggest_int("num_mlp_layers", 1, 3)
+    num_mlp_layers = trial.suggest_int("num_mlp_layers", 1, 2)
 
     # Metric threshold (used by compute_metrics in workflow)
     threshold = trial.suggest_float("threshold", 0.25, 0.4)
@@ -144,7 +144,6 @@ def main():
         study_name="chemberta_frozen_mlp_tuning",
         direction="maximize",
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
-        pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
         storage=storage,
         load_if_exists=bool(storage),
     )
