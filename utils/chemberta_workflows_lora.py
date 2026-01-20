@@ -261,7 +261,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
             pooled = torch.cat([mean_pooled, max_pooled], dim=1)  # [B, 2H]
             x = self.dropout(pooled)
 
-        if strat == "mean_pooling":
+        if strat == "mean":
             token_embs = outputs.last_hidden_state  # (batch, seq_len, hidden)
             pooled = mean_pool(token_embs, attention_mask)  # (batch, hidden)
             x = self.dropout(pooled)
@@ -448,9 +448,6 @@ def train_chemberta_multilabel_model(
         gamma = args.gamma,
         alpha = args.alpha,
         pooling_strat=args.pooling_strat,
-        gamma_pos=args.gamma_pos,
-        gamma_neg=args.gamma_neg,
-        asl_clip=args.asl_clip,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,

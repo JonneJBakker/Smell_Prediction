@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows import train_chemberta_multilabel_model
+from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
@@ -149,24 +149,29 @@ def train_mlc():
     }
 
     final_args = SimpleNamespace(
+        train_csv='../Data/splits/train_stratified80.csv',
+        test_csv='../Data/splits/test_stratified10.csv',
         smiles_column="nonStereoSMILES",
         target_columns=target_cols,
-        output_dir="final_runs/chemberta_best_long",
+        output_dir=f'../trained_models/',
 
-        epochs=50,
+        epochs=40,
         batch_size=8,
         lr=0.001,
         l2_lambda=0.06710588932518757,
         dropout=0.08079026234856405,
         hidden_channels=512,
         num_mlp_layers=3,
-        pooling_strat="cls_mean",
+        pooling_strat="mean",
         threshold=0.3624091777658122,
         random_seed=42,
 
         loss_type="focal",
         gamma=2.007878133924727,
         alpha=0.19252534556671558,
+        lora_r=16,
+        lora_alpha=16,
+        lora_dropout=0.1,
     )
 
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
