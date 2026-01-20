@@ -160,7 +160,7 @@ def main():
 
     study.optimize(
         lambda t: objective(t, df_train=df_train, df_val=df_val, smiles_col=smiles_col, target_cols=target_cols),
-        n_trials=1,
+        n_trials=50,
         show_progress_bar=True,
     )
 
@@ -176,7 +176,7 @@ def main():
         smiles_column=smiles_col,
         target_columns=target_cols,
         output_dir=os.path.join("final_runs", "chemberta_lora_best"),
-        epochs=20,
+        epochs=50,
         batch_size=int(best["batch_size"]),
         lr=0.001,
         l2_lambda=float(best["weight_decay"]),
