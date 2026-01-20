@@ -151,7 +151,7 @@ def main():
     storage = None
 
     study = optuna.create_study(
-        study_name="chemberta_frozen_mlp_tuning",
+        study_name="chemberta_lora_tuning",
         direction="maximize",
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
         storage=storage,
@@ -176,7 +176,7 @@ def main():
         smiles_column=smiles_col,
         target_columns=target_cols,
         output_dir=os.path.join("final_runs", "chemberta_lora_best"),
-        epochs=1,
+        epochs=20,
         batch_size=int(best["batch_size"]),
         lr=0.001,
         l2_lambda=float(best["weight_decay"]),
