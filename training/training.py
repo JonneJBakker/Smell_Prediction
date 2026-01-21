@@ -148,7 +148,7 @@ def train_mlc():
         "threshold" : 0.27,
     }
 
-    final_args = SimpleNamespace(
+    final_args_frozen = SimpleNamespace(
         train_csv='../Data/splits/train_stratified80.csv',
         test_csv='../Data/splits/test_stratified10.csv',
         smiles_column="nonStereoSMILES",
@@ -174,13 +174,37 @@ def train_mlc():
         lora_dropout=0.1,
     )
 
+    lora_params = SimpleNamespace(
+        train_csv='../Data/splits/train_stratified80.csv',
+        test_csv='../Data/splits/test_stratified10.csv',
+        smiles_column="nonStereoSMILES",
+        target_columns=target_cols,
+        output_dir=f'../trained_models/',
+        epochs=40,
+        lr=0.001,
+        pooling_strat="mean",
+        loss_type="focal",
+        gamma=1.8183167530341804,
+        alpha=0.2781964441223481,
+        batch_size=8,
+        l2_lambda=0.10108776189661574,
+        dropout=0.17426042486882132,
+        hidden_channels=512,
+        num_mlp_layers=2,
+        threshold=0.3323017643686535,
+        lora_r=16,
+        lora_alpha=32,
+        lora_dropout=0.0614101620783747,
+        random_seed=42,
+    )
+
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
 
     #plot_pca(args=smell_mlc_parser)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
-    smell_mlc = train_chemberta_multilabel_model(final_args, df_train=train, df_test=test, df_val=val)
+    smell_mlc = train_chemberta_multilabel_model(lora_params, df_train=train, df_test=test, df_val=val)
     ''''
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,
