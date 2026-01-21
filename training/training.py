@@ -159,7 +159,7 @@ def train_mlc():
         batch_size=8,
         lr=0.0005,
         l2_lambda=0.06710588932518757,
-        pooling_strat="mean",
+        pooling_strat="cls",
         loss_type="focal",
         gamma=2.0984128550461207,
         alpha=0.1915039083259983,
@@ -184,7 +184,7 @@ def train_mlc():
         output_dir=f'../trained_models/',
         epochs=40,
         lr=0.0005,
-        pooling_strat="mean",
+        pooling_strat="cls",
         loss_type="focal",
         gamma=1.8183167530341804,
         alpha=0.2781964441223481,
@@ -208,6 +208,8 @@ def train_mlc():
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
     smell_mlc = train_chemberta_multilabel_model(final_args_frozen, df_train=train, df_test=test, df_val=val)
+
+    smell_mlc = train_chemberta_multilabel_model(lora_params, df_train=train, df_test=test, df_val=val)
     ''''
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,

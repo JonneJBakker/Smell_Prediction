@@ -100,3 +100,58 @@ def plot_predictions_vs_targets(
     print(f"Saved predictions vs targets with distributions to {save_file}")
     plt.close()
     return save_file
+
+
+import pandas as pd
+def main():
+    # Load
+    frozen = pd.read_csv("../Data/Metrics/final_models_per_label_metrics/final_frozen_per_label_metrics.csv")
+    lora   = pd.read_csv("../Data/Metrics/final_models_per_label_metrics/final_lora_per_label_metrics.csv")
+    mpnn   = pd.read_csv("../Data/Metrics/final_models_per_label_metrics/mpnn_per_label_metrics.csv")
+
+    # Keep only what we need
+    frozen = frozen[["label", "f1", "frequency"]].rename(columns={"f1": "f1_frozen"})
+    lora   = lora[["label", "f1"]].rename(columns={"f1": "f1_lora"})
+    mpnn   = mpnn[["label", "f1"]].rename(columns={"f1": "f1_mpnn"})
+
+    # ---- ALIGN BY LABEL (THIS IS THE CRUCIAL STEP) ----
+    merged = (
+        frozen
+        .merge(lora, on="label", how="inner")
+        .merge(mpnn, on="label", how="inner")
+    )
+
+    # Optional sanity checks
+    assert merged["label"].is_unique
+    assert not merged.isna().any().any()
+
+    # Sort for visualization (optional, but recommended)
+    merged = merged.sort_values("f1_lora", ascending=False).reset_index(drop=True)
+
+
+    # Plot
+    plt.figure(figsize=(14, 5))
+    plt.plot(merged["label"], merged["f1_mpnn"],   label="MPNN")
+    plt.plot(merged["label"], merged["f1_frozen"], label="ChemBERTa (Frozen)")
+    plt.plot(merged["label"], merged["f1_lora"],   label="ChemBERTa + LoRA")
+
+    plt.xlabel("Odour label (sorted by f1 score LoRA)")
+    plt.ylabel("Per-label F1-score")
+    plt.legend()
+
+    # Reduce x-tick clutter
+    n = len(merged)
+    step = max(1, n // 40)
+    plt.xticks(range(0, n, step), merged["label"].iloc[::step], rotation=60, ha="right")
+
+    plt.tight_layout()
+    plt.savefig("per_label_f1_comparison.pdf", bbox_inches="tight")
+    plt.show()
+
+    merged["delta_lora_frozen"] = merged["f1_lora"] - merged["f1_frozen"]
+    merged = merged.sort_values("delta_lora_frozen", ascending=False).reset_index(drop=True)
+
+    print(merged.head())
+    print(merged.tail())
+if __name__ == "__main__":
+    main()
