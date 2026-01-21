@@ -181,7 +181,7 @@ def train_mlc():
         target_columns=target_cols,
         output_dir=f'../trained_models/',
         epochs=40,
-        lr=0.001,
+        lr=0.0005,
         pooling_strat="mean",
         loss_type="focal",
         gamma=1.8183167530341804,

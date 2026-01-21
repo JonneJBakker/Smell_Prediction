@@ -12,6 +12,8 @@ from training.training import train_mlc
 #from models.mpnn import train_mpnn
 import pandas as pd
 
+from utils.chemberta_workflows_lora import sweep_thresholds_from_saved_results
+
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
@@ -29,13 +31,14 @@ if __name__ == "__main__":
     print("Best F1-score alpha:", best_f1_alpha)
     print("Best F1-score:", best_f1)
     '''''
-    #results_path = "cberta_2layer_256_cls.json"
-    #df_thresh, best = sweep_thresholds_from_saved_results(
-        #results_path,
-        #metric="macro_f1",  # or "samples_f1", "micro_f1", ...
-    #)
-
-    #print("Best threshold:", best["threshold"])
+    '''''
+    results_path = "trained_models/lora_best/lora_best.json"
+    df_thresh, best = sweep_thresholds_from_saved_results(
+        results_path,
+        metric="macro_f1",  # or "samples_f1", "micro_f1", ...
+    )
+    print("Best threshold:", best["threshold"])
+    '''''
     train_mlc()
     #train_mpnn(DATA_PATH)
     ''''
