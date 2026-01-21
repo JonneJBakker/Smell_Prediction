@@ -31,14 +31,14 @@ if __name__ == "__main__":
     print("Best F1-score alpha:", best_f1_alpha)
     print("Best F1-score:", best_f1)
     '''''
-    ''''
-    results_path = "trained_models/FINAL_LORA/all_results.json"
+
+    results_path = "trained_models/FINAL_FROZEN/all_results.json"
     df_thresh, best = sweep_thresholds_from_saved_results(
         results_path,
         metric="macro_f1",  # or "samples_f1", "micro_f1", ...
     )
     print("Best threshold:", best["threshold"])
-    '''
+
     train_mlc()
     #train_mpnn(DATA_PATH)
     ''''

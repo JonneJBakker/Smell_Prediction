@@ -193,7 +193,7 @@ def train_mlc():
         dropout=0.17426042486882132,
         hidden_channels=512,
         num_mlp_layers=2,
-        threshold=0.3323017643686535,
+        threshold=0.35,
         use_lora = True,
         lora_r=16,
         lora_alpha=32,
