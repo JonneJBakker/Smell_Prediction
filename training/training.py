@@ -157,21 +157,23 @@ def train_mlc():
 
         epochs=40,
         batch_size=8,
-        lr=0.001,
+        lr=0.0005,
         l2_lambda=0.06710588932518757,
-        dropout=0.08079026234856405,
-        hidden_channels=512,
-        num_mlp_layers=3,
         pooling_strat="mean",
-        threshold=0.3624091777658122,
-        random_seed=42,
-
         loss_type="focal",
-        gamma=2.007878133924727,
-        alpha=0.19252534556671558,
+        gamma=2.0984128550461207,
+        alpha=0.1915039083259983,
+        weight_decay=0.06710588932518757,
+        dropout=0.08076239608280959,
+        hidden_channels=512,
+        num_mlp_layers=2,
+        threshold=0.35,
+
+        use_lora = False,
         lora_r=16,
         lora_alpha=16,
         lora_dropout=0.1,
+        random_seed=42,
     )
 
     lora_params = SimpleNamespace(
@@ -192,6 +194,7 @@ def train_mlc():
         hidden_channels=512,
         num_mlp_layers=2,
         threshold=0.3323017643686535,
+        use_lora = True,
         lora_r=16,
         lora_alpha=32,
         lora_dropout=0.0614101620783747,
@@ -204,7 +207,7 @@ def train_mlc():
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
     #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
-    smell_mlc = train_chemberta_multilabel_model(lora_params, df_train=train, df_test=test, df_val=val)
+    smell_mlc = train_chemberta_multilabel_model(final_args_frozen, df_train=train, df_test=test, df_val=val)
     ''''
     results, best_output = grid_search_gamma_alpha(
         args=smell_mlc_parser,

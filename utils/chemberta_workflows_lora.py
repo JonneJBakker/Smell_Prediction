@@ -178,6 +178,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         lora_alpha=16,
         lora_dropout=0.05,
         pooling_strat = "max_mean",
+        use_lora = False,
     ):
         super().__init__()
         self.roberta = RobertaModel.from_pretrained(pretrained, add_pooling_layer=False)
@@ -188,18 +189,19 @@ class ChembertaMultiLabelClassifier(nn.Module):
         for param in self.roberta.parameters():
              param.requires_grad = False
 
-        lora_cfg = LoraConfig(
-            task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            bias="none",
-            target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
-        )
+        if use_lora:
+            lora_cfg = LoraConfig(
+                task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
+                r=lora_r,
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+                bias="none",
+                target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
+            )
 
-        self.roberta = get_peft_model(self.roberta, lora_cfg)
+            self.roberta = get_peft_model(self.roberta, lora_cfg)
 
-        self.roberta.print_trainable_parameters()
+            self.roberta.print_trainable_parameters()
 
         # If we want attention pooling
         if self.pooling_strat == "attention":
@@ -451,6 +453,7 @@ def train_chemberta_multilabel_model(
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
+        use_lora=args.use_lora,
     )
 
     # Setup training arguments
@@ -529,33 +532,34 @@ def train_chemberta_multilabel_model(
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
 
-    # ---- MERGE LORA INTO BASE MODEL FOR TL COMPATIBILITY ----
-    print("Output dir:", os.path.abspath(output_dir))
-    print("Root files:", os.listdir(output_dir))
+    if args.use_lora:
+        # ---- MERGE LORA INTO BASE MODEL FOR TL COMPATIBILITY ----
+        print("Output dir:", os.path.abspath(output_dir))
+        print("Root files:", os.listdir(output_dir))
 
-    peft_dir = find_peft_dir(output_dir)
-    print("Using PEFT dir:", peft_dir)
-    print("PEFT dir files:", os.listdir(peft_dir))
+        peft_dir = find_peft_dir(output_dir)
+        print("Using PEFT dir:", peft_dir)
+        print("PEFT dir files:", os.listdir(peft_dir))
 
-    # 1) Load base Roberta
-    base_roberta = AutoModel.from_pretrained(
-        DEFAULT_PRETRAINED_NAME,
-        add_pooling_layer=False,
-    )
+        # 1) Load base Roberta
+        base_roberta = AutoModel.from_pretrained(
+            DEFAULT_PRETRAINED_NAME,
+            add_pooling_layer=False,
+        )
 
-    # 2) Load trained adapter and merge
-    peft_roberta = PeftModel.from_pretrained(base_roberta, peft_dir)
-    merged_roberta = peft_roberta.merge_and_unload()
+        # 2) Load trained adapter and merge
+        peft_roberta = PeftModel.from_pretrained(base_roberta, peft_dir)
+        merged_roberta = peft_roberta.merge_and_unload()
 
-    # 3) Swap merged backbone into your classifier
-    model.roberta = merged_roberta
+        # 3) Swap merged backbone into your classifier
+        model.roberta = merged_roberta
 
-    # 4) Save a *plain* state_dict (NO peft / lora keys)
-    plain_model_path = os.path.join(
-        output_dir, "chemberta_multilabel_model_final_merged_plain.bin"
-    )
-    torch.save(model.state_dict(), plain_model_path)
-    print(f"Merged plain model saved to {plain_model_path}")
+        # 4) Save a *plain* state_dict (NO peft / lora keys)
+        plain_model_path = os.path.join(
+            output_dir, "chemberta_multilabel_model_final_merged_plain.bin"
+        )
+        torch.save(model.state_dict(), plain_model_path)
+        print(f"Merged plain model saved to {plain_model_path}")
 
     hyperparams = {
         "hidden_channels": args.hidden_channels,
