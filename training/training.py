@@ -84,7 +84,7 @@ def train_mlc():
     )
 
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
-    pooling_strats = ["max", "cls_mean", "mean_max", "cls_max"]
+    pooling_strats = ["cls", "mean", "max", "cls_mean", "mean_max", "cls_max"]
 
     for p in pooling_strats:
         args = copy.deepcopy(final_args_frozen)
@@ -92,7 +92,7 @@ def train_mlc():
 
 
         print(f"\n=== Training with pooling_strat={p} ===")
-        result = train_chemberta_multilabel_model(args, df_train=train, df_test=test, df_val=val)
+        result = train_chemberta_multilabel_model(args, df_train=train, df_test=val, df_val=val)
 
         print(p)
     #plot_pca(args=smell_mlc_parser)
