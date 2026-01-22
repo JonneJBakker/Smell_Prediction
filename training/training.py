@@ -37,7 +37,7 @@ def train_mlc():
         target_columns=target_cols,
         output_dir=f'../trained_models/',
 
-        epochs=40,
+        epochs=20,
         batch_size=8,
         lr=0.0005,
         l2_lambda=0.06710588932518757,
@@ -64,7 +64,7 @@ def train_mlc():
         smiles_column="nonStereoSMILES",
         target_columns=target_cols,
         output_dir=f'../trained_models/',
-        epochs=40,
+        epochs=20,
         lr=0.0005,
         pooling_strat="mean",
         loss_type="focal",
