@@ -87,7 +87,7 @@ def train_mlc():
     pooling_strats = ["cls", "mean", "max", "cls_mean", "mean_max", "cls_max"]
 
     for p in pooling_strats:
-        args = copy.deepcopy(lora_params)
+        args = copy.deepcopy(final_args_frozen)
         args.pooling_strat = p
 
 
