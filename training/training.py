@@ -19,7 +19,7 @@ from sklearn.metrics import f1_score
 
 
 # %%
-RANDOM_SEED = 19237
+RANDOM_SEED = 42
 # %%
 
 # %%
@@ -87,7 +87,7 @@ def train_mlc():
     pooling_strats = ["cls_mean"]
 
     for p in pooling_strats:
-        args = copy.deepcopy(final_args_frozen)
+        args = copy.deepcopy(lora_params)
         args.pooling_strat = p
 
 
