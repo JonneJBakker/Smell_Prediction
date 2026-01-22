@@ -410,6 +410,7 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
         gamma_neg=getattr(args, "gamma_neg", 4.0),
         asl_clip=getattr(args, "asl_clip", 0.0),
         freeze_encoder=True,
+        use_lora=False,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
