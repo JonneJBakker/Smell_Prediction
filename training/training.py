@@ -37,7 +37,7 @@ def train_mlc():
         target_columns=target_cols,
         output_dir=f'../trained_models/',
 
-        epochs=20,
+        epochs=40,
         batch_size=8,
         lr=0.0005,
         l2_lambda=0.06710588932518757,
@@ -64,7 +64,7 @@ def train_mlc():
         smiles_column="nonStereoSMILES",
         target_columns=target_cols,
         output_dir=f'../trained_models/',
-        epochs=20,
+        epochs=40,
         lr=0.0005,
         pooling_strat="mean",
         loss_type="focal",
@@ -84,7 +84,7 @@ def train_mlc():
     )
 
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
-    pooling_strats = ["cls", "mean", "max", "cls_mean", "mean_max", "cls_max"]
+    pooling_strats = ["cls_mean"]
 
     for p in pooling_strats:
         args = copy.deepcopy(final_args_frozen)
