@@ -92,7 +92,7 @@ def train_mlc():
 
 
         print(f"\n=== Training with pooling_strat={p} ===")
-        result = train_chemberta_multilabel_model(args, df_train=train, df_test=val, df_val=val)
+        result = train_chemberta_multilabel_model(args, df_train=train, df_test=test, df_val=val)
 
         print(p)
     #plot_pca(args=smell_mlc_parser)
