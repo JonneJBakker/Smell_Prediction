@@ -2,6 +2,8 @@
 #from Data.rdkit_pca import RDKitPCA
 #from Data.structure_odor_visualizer import visualize_structure_odor
 #from Data.data_prep import split_data
+from Data.data_prep import stratified_train_val_test_split
+from models.mpnn import train_mpnn
 from training.training import train_mlc
 #from utils.chemberta_workflows import sweep_thresholds_from_saved_results
 
@@ -17,51 +19,11 @@ from utils.chemberta_workflows_lora import sweep_thresholds_from_saved_results
 DATA_PATH = r'Data/Multi-Labelled_Smiles_Odors_dataset.csv'
 if __name__ == "__main__":
     data = pd.read_csv(DATA_PATH)
-    #stratified_train_val_test_split(data, smiles_col='SMILES', test_size=0.1, val_size=0.1)
-    #augment_train_csv('Data/splits/train_stratified.csv', smiles_col="nonStereoSMILES", out_csv_path=r'Data/splits/augment_train.csv')
-    '''
-    alphas = [0.25, 0.5, 0.75, 1.0, 1.5]
-    best_f1 = 0
-    for alpha in alphas:
-        f1_macro = train_mlc(alpha=alpha)
-        if f1_macro > best_f1:
-            best_f1 = f1_macro
-            best_f1_alpha = alpha
+    stratified_train_val_test_split(data, smiles_col='nonStereoSMILES', test_size=0.1, val_size=0.1)
 
-    print("Best F1-score alpha:", best_f1_alpha)
-    print("Best F1-score:", best_f1)
-    '''''
-    ''''
-    results_path = "trained_models/FINAL_FROZEN/all_results.json"
-    df_thresh, best = sweep_thresholds_from_saved_results(
-        results_path,
-        metric="macro_f1",  # or "samples_f1", "micro_f1", ...
-    )
-    print("Best threshold:", best["threshold"])
-    '''
     train_mlc()
-    #train_mpnn(DATA_PATH)
-    ''''
-      micro_accuracy: 0.0213
-  macro_auroc:    0.8716
-  micro_f1:       0.4229
-  macro_f1:       0.2985
-  samples_f1:     0.4093
-  hamming_loss:   0.0536
-  jaccard_samp:   0.2856
-    '''
-    #plot_per_label_metrics(datapath="Data/Metrics/alpha=1.gamma=0.75.csv")
-    #print(torch.cuda.is_available(), torch.cuda.get_device_name(0))
-    #smiles_train, smiles_val, smiles_test, labels_train, labels_val, labels_test, label_cols = split_data(data, smiles_col="nonStereoSMILES")
-    #visualize_data(data)
-    #split_data(data, smiles_col="nonStereoSMILES")
-    #augment_train_csv("Data/splits/smiles_train.csv", "Data/splits/labels_train.csv", out_csv_path="Data/splits/augmented_train.csv", percentile=95, k=10)
-    #train_chemBerta(data, smiles_col="nonStereoSMILES")
-    #func_detector = FunctionalGroupDetector()
-    #func_detector.detect_from_csv(input_csv=DATA_PATH, output_csv="Data/smiles_with_func_groups.csv")
-    #visualize_structure_odor(input_csv="Data/smiles_with_func_groups.csv", descriptor_column="descriptors")
-    #an = SmellFragmentAnalyzer(smell_col="descriptors", frag_prefix="fr_")
-    #an.full_analysis("Data/smiles_with_func_groups.csv", n_clusters=3)
-    #df = pd.read_csv("Data/smiles_with_func_groups.csv")
+
+
+    train_mpnn(DATA_PATH)
 
 

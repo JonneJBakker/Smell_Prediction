@@ -1,13 +1,7 @@
-import numpy as np
 import pandas as pd
-from numpy.f2py.cfuncs import commonhooks
-from sklearn.model_selection import train_test_split
-from rdkit import Chem
-from rdkit import RDLogger
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 
 RANDOM_SEED = 123124
-
 
 
 def stratified_train_val_test_split(
@@ -44,7 +38,7 @@ def stratified_train_val_test_split(
     df = df.drop(columns=[column for column in df.columns.to_list() if
                           column in ["descriptors"]])
 
-    # 1) Decide which columns are labels
+    # Decide which columns are labels
     if target_cols is None:
         # infer: numeric columns except smiles_col
         numeric_cols = [
@@ -56,10 +50,10 @@ def stratified_train_val_test_split(
     if len(target_cols) == 0:
         raise ValueError("No target columns found. Please pass target_cols explicitly.")
 
-    # 2) Multi-label matrix for stratification
+    # Multi-label matrix for stratification
     Y = df[target_cols].values
 
-    # 3) First split: train vs test
+    # First split: train vs test
     msss = MultilabelStratifiedShuffleSplit(
         n_splits=1,
         test_size=test_size,
@@ -70,7 +64,7 @@ def stratified_train_val_test_split(
     df_train_full = df.iloc[train_idx].reset_index(drop=True)
     df_test = df.iloc[test_idx].reset_index(drop=True)
 
-    # 4) Second split: train vs val (inside train_full)
+    # Second split: train vs val (inside train_full)
     Y_train_full = df_train_full[target_cols].values
     val_relative_size = val_size / (1.0 - test_size)
 
@@ -89,6 +83,6 @@ def stratified_train_val_test_split(
     print("  val  :", df_val[target_cols].mean(numeric_only=True).to_dict())
     print("  test :", df_test[target_cols].mean(numeric_only=True).to_dict())
 
-    df_train.to_csv("Data/splits/int_train_stratified80.csv", index=False)
-    df_val.to_csv("Data/splits/int_val_stratified10.csv", index=False)
-    df_test.to_csv("Data/splits/int_test_stratified10.csv", index=False)
+    df_train.to_csv("Data/splits/train_stratified80.csv", index=False)
+    df_val.to_csv("Data/splits/val_stratified10.csv", index=False)
+    df_test.to_csv("Data/splits/test_stratified10.csv", index=False)

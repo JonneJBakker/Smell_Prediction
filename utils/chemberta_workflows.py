@@ -1,10 +1,10 @@
 """
-chemberta_workflows.py (NO LoRA)
+chemberta_workflows.py
 
 - Loads DeepChem/ChemBERTa-77M-MLM via Hugging Face
 - Freezes base encoder, trains an MLP head
 - Pooling strategies: cls, mean, max, cls_mean, mean_max, attention
-- Losses: bce, focal, (optional) asl
+- Losses: bce, focal
 """
 
 import os
@@ -38,9 +38,7 @@ from models.simple_mlp import SimpleMLP
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
 
 
-# -------------------------
 # Loss functions
-# -------------------------
 class FocalLoss(nn.Module):
     """Multi-label focal loss on logits + {0,1} targets."""
     def __init__(self, alpha=None, gamma=2.0, reduction="mean"):
@@ -68,61 +66,7 @@ class FocalLoss(nn.Module):
             return loss.sum()
         return loss
 
-
-class AsymmetricFocalLoss(nn.Module):
-    """
-    Asymmetric focal loss for multi-label classification.
-    Useful under heavy imbalance.
-    """
-    def __init__(
-        self,
-        gamma_pos=0.0,
-        gamma_neg=4.0,
-        clip=0.0,
-        eps=1e-8,
-        reduction="mean",
-        pos_weight=None,
-    ):
-        super().__init__()
-        self.gamma_pos = gamma_pos
-        self.gamma_neg = gamma_neg
-        self.clip = clip
-        self.eps = eps
-        self.reduction = reduction
-        self.pos_weight = pos_weight
-
-    def forward(self, logits, targets):
-        prob = torch.sigmoid(logits)
-        prob_pos = prob
-        prob_neg = 1.0 - prob
-
-        if self.clip and self.clip > 0:
-            prob_neg = torch.clamp(prob_neg + self.clip, max=1.0)
-
-        log_pos = torch.log(torch.clamp(prob_pos, min=self.eps))
-        log_neg = torch.log(torch.clamp(prob_neg, min=self.eps))
-
-        loss = targets * log_pos + (1.0 - targets) * log_neg
-
-        if self.pos_weight is not None:
-            loss = loss * (targets * self.pos_weight + (1.0 - targets))
-
-        if self.gamma_pos != 0.0 or self.gamma_neg != 0.0:
-            pt = prob_pos * targets + prob_neg * (1.0 - targets)
-            gamma = self.gamma_pos * targets + self.gamma_neg * (1.0 - targets)
-            loss = loss * torch.pow(1.0 - pt, gamma)
-
-        loss = -loss
-        if self.reduction == "mean":
-            return loss.mean()
-        if self.reduction == "sum":
-            return loss.sum()
-        return loss
-
-
-# -------------------------
 # Pooling utilities
-# -------------------------
 def mean_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
     mask = attention_mask.unsqueeze(-1).type_as(hidden_states)  # (B, T, 1)
     summed = (hidden_states * mask).sum(dim=1)                  # (B, H)
@@ -134,16 +78,14 @@ def max_pool(hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch
     mask = attention_mask.unsqueeze(-1).bool()                  # (B, T, 1)
     masked = hidden_states.masked_fill(~mask, float("-inf"))    # padded -> -inf
     pooled, _ = masked.max(dim=1)                               # (B, H)
-    # if a sequence were all padding (shouldn't happen), replace -inf with 0
+    # if a sequence were all padding replace -inf with 0
     pooled = torch.where(torch.isfinite(pooled), pooled, torch.zeros_like(pooled))
     return pooled
 
-# -------------------------
 # Model
-# -------------------------
 class ChembertaMultiLabelClassifier(nn.Module):
     """
-    ChemBERTa encoder (frozen) + pooling + MLP head.
+    ChemBERTa encoder (frozen or LoRA) + pooling + MLP head.
     """
     def __init__(
         self,
@@ -153,16 +95,15 @@ class ChembertaMultiLabelClassifier(nn.Module):
         hidden_channels: int = 256,
         num_mlp_layers: int = 2,
         pooling_strat: str = "mean_max",
-        loss_type: str = "bce",  # "bce" | "focal" | "asl"
+        loss_type: str = "bce",  # "bce" | "focal"
+
         # focal params
         gamma: float = 2.0,
         alpha=None,
-        # asl params
-        gamma_pos: float = 0.0,
-        gamma_neg: float = 4.0,
-        asl_clip: float = 0.0,
         pos_weight=None,
         freeze_encoder: bool = True,
+
+        # lora
         use_lora: bool = True,
         lora_r: int = 8,
         lora_alpha: int = 16,
@@ -179,20 +120,17 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         if use_lora:
             lora_cfg = LoraConfig(
-                task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
+                task_type=TaskType.FEATURE_EXTRACTION,
                 r=lora_r,
                 lora_alpha=lora_alpha,
                 lora_dropout=lora_dropout,
                 bias="none",
-                target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
+                target_modules=["query", "key", "value"],
             )
 
             self.roberta = get_peft_model(self.roberta, lora_cfg)
 
             self.roberta.print_trainable_parameters()
-
-        if pooling_strat == "attention":
-            self.query_vector = nn.Parameter(torch.randn(self.roberta.config.hidden_size))
 
         self.dropout = nn.Dropout(dropout)
 
@@ -217,18 +155,10 @@ class ChembertaMultiLabelClassifier(nn.Module):
             self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         elif loss_type == "focal":
             self.loss_fct = FocalLoss(alpha=alpha, gamma=gamma, reduction="mean")
-        elif loss_type == "asl":
-            self.loss_fct = AsymmetricFocalLoss(
-                gamma_pos=gamma_pos,
-                gamma_neg=gamma_neg,
-                clip=asl_clip,
-                reduction="mean",
-                pos_weight=pos_weight,
-            )
         else:
             raise ValueError(f"Unknown loss_type='{loss_type}'. Use 'bce', 'focal', or 'asl'.")
 
-    def _pool(self, token_embs: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+    def pool(self, token_embs: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         strat = self.pooling_strat
 
         if strat == "cls":
@@ -255,22 +185,13 @@ class ChembertaMultiLabelClassifier(nn.Module):
             max = max_pool(token_embs, attention_mask)
             return torch.cat([cls, max], dim=1)
 
-        if strat == "attention":
-            # masked attention pooling with a learned query vector
-            # scores: (B, T)
-            scores = torch.matmul(token_embs, self.query_vector)
-            # mask out padding positions
-            scores = scores.masked_fill(attention_mask == 0, float("-inf"))
-            weights = torch.softmax(scores, dim=1).unsqueeze(-1)   # (B, T, 1)
-            return torch.sum(token_embs * weights, dim=1)           # (B, H)
-
         raise ValueError(f"Unknown pooling_strat='{strat}'.")
 
     def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
         token_embs = outputs.last_hidden_state  # (B, T, H)
 
-        pooled = self._pool(token_embs, attention_mask)
+        pooled = self.pool(token_embs, attention_mask)
         x = self.dropout(pooled)
         logits = self.mlp(x)
 
@@ -281,9 +202,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
         return SequenceClassifierOutput(loss=loss, logits=logits)
 
 
-# -------------------------
 # Dataset
-# -------------------------
 class ChembertaDataset(Dataset):
     def __init__(self, texts, targets, tokenizer, max_length=512):
         self.encodings = tokenizer(
@@ -306,10 +225,9 @@ class ChembertaDataset(Dataset):
         }
 
 
-# -------------------------
 # Metrics
-# -------------------------
-def get_multilabel_compute_metrics_fn(threshold=0.3):
+
+def get_multilabel_compute_metrics_fn(threshold=0.35):
     def compute_metrics(eval_pred):
         logits = eval_pred.predictions
         labels = eval_pred.label_ids
@@ -338,7 +256,7 @@ def get_multilabel_compute_metrics_fn(threshold=0.3):
     return compute_metrics
 
 
-def evaluate_per_label_metrics(trainer, dataset, label_names, threshold=0.3):
+def evaluate_per_label_metrics(trainer, dataset, threshold=0.35):
     """
     Optional helper if you want per-label metrics; returns macro-F1 for convenience.
     """
@@ -352,9 +270,9 @@ def evaluate_per_label_metrics(trainer, dataset, label_names, threshold=0.3):
     return macro_f1
 
 
-# -------------------------
+
 # Training entrypoint
-# -------------------------
+
 def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=None):
     """
     Train ChemBERTa (frozen encoder) + MLP head.
@@ -365,7 +283,7 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
       - train_csv (for naming)
       - output_dir
       - epochs, batch_size, lr
-      - l2_lambda (weight decay), dropout
+      - weight_decay (weight decay), dropout
       - hidden_channels, num_mlp_layers
       - pooling_strat
       - loss_type (bce|focal|asl), gamma, alpha, gamma_pos, gamma_neg, asl_clip
@@ -406,9 +324,6 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
         loss_type=getattr(args, "loss_type", "bce"),
         gamma=getattr(args, "gamma", 2.0),
         alpha=getattr(args, "alpha", None),
-        gamma_pos=getattr(args, "gamma_pos", 0.0),
-        gamma_neg=getattr(args, "gamma_neg", 4.0),
-        asl_clip=getattr(args, "asl_clip", 0.0),
         freeze_encoder=True,
         use_lora=args.use_lora,
         lora_r=args.lora_r,
@@ -428,7 +343,7 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
         save_strategy="epoch",
         save_total_limit=1,
         learning_rate=args.lr,
-        weight_decay=args.l2_lambda,
+        weight_decay=args.weight_decay,
         load_best_model_at_end=True,
         metric_for_best_model="macro_f1",
         greater_is_better=True,
@@ -456,7 +371,7 @@ def train_chemberta_multilabel_model(args, df_train, df_test, df_val, device=Non
 
     print("\nEvaluating model on test set...")
     metrics = trainer.evaluate(eval_dataset=test_ds)
-    test_macro_f1 = evaluate_per_label_metrics(trainer, test_ds, target_cols, threshold=args.threshold)
+    test_macro_f1 = evaluate_per_label_metrics(trainer, test_ds, threshold=args.threshold)
 
     print("\nFull test metrics dict:")
     for k, v in metrics.items():

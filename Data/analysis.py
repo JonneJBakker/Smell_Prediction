@@ -257,41 +257,8 @@ class SmellFragmentAnalyzer:
         self.frag_corr = corr
         return corr
 
-    # ---------- Clustering (PCA + KMeans) ----------
 
-    def cluster_smells(
-        self,
-        n_clusters: int = 4,
-        scale: bool = True,
-        random_state: int = 42,
-    ) -> pd.DataFrame:
-        """
-        Cluster smells using their fragment-frequency vectors (from frag_smell_df).
-        Returns a DataFrame indexed by smell with columns: PC1, PC2, Cluster.
-        """
-        if self.frag_smell_df is None:
-            raise RuntimeError("Call .build_fragment_smell_matrix(...) first.")
-
-        X = self.frag_smell_df.T  # smells x fragments
-        X_mat = X.values
-
-        if scale:
-            scaler = StandardScaler()
-            X_mat = scaler.fit_transform(X_mat)
-
-        # Keep 2 PCs for visualization
-        self.pca_model = PCA(n_components=2, random_state=random_state)
-        X_pca = self.pca_model.fit_transform(X_mat)
-
-        self.kmeans_model = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
-        labels = self.kmeans_model.fit_predict(X_mat)
-
-        out = pd.DataFrame(X_pca, index=X.index, columns=["PC1", "PC2"])
-        out["Cluster"] = labels
-        self.pca_df = out
-        return out
-
-    # ---------- Plotting (matplotlib only) ----------
+    # Plotting
 
     def _heatmap(
         self,
@@ -517,9 +484,6 @@ class SmellFragmentAnalyzer:
         )
         plt.show()
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LogNorm
 
     def plot_fragment_correlation_heatmap(
             self,
@@ -826,7 +790,7 @@ class SmellFragmentAnalyzer:
         if self.frag_corr is not None:
             self.frag_corr.to_csv(os.path.join(out_dir, "fragment_correlation.csv"))
 
-    # ---------- Convenience pipeline ----------
+    # Pipeline
 
     def full_analysis(
         self,
@@ -846,14 +810,12 @@ class SmellFragmentAnalyzer:
         self.build_smell_cooccurrence()
         self.build_fragment_cooccurrence()
         self.build_fragment_correlation(method=correlation_method)
-        self.cluster_smells(n_clusters=n_clusters)
 
         if plot:
             self.plot_fragment_smell_heatmap()
             self.plot_smell_cooccurrence_heatmap()
             self.plot_fragment_cooccurrence_heatmap()
             self.plot_fragment_correlation_heatmap()
-            self.plot_smell_clusters()
             self.print_summary_stats()
 
 

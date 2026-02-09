@@ -71,7 +71,7 @@ def train_mlc():
         gamma=1.8183167530341804,
         alpha=0.2781964441223481,
         batch_size=8,
-        l2_lambda=0.10108776189661574,
+        weight_decay=0.10108776189661574,
         dropout=0.17426042486882132,
         hidden_channels=256,
         num_mlp_layers=2,
@@ -95,11 +95,4 @@ def train_mlc():
         result = train_chemberta_multilabel_model(args, df_train=train, df_test=test, df_val=val)
 
         print(p)
-    #plot_pca(args=smell_mlc_parser)
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
-    #molformer_results, f1_macro = train_molformer_multilabel_model(args=smell_mlc_parser, df_train=train, df_test=test, df_val=val)
-    #smell_mlc_results, f1_macro = train_chemberta_multilabel_model(smell_mlc_parser, train, test, val, threshold=0.25, gamma=0.75, alpha=None)
-    #smell_mlc = train_chemberta_multilabel_model(final_args_frozen, df_train=train, df_test=test, df_val=val)
-
-    #smell_mlc = train_chemberta_multilabel_model(lora_params, df_train=train, df_test=test, df_val=val)
 

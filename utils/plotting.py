@@ -1,108 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import os
 
-def plot_predictions_vs_targets(
-    predictions,
-    targets,
-    output_path,
-    output_filename="preds_vs_targets.pdf",
-):
-    """
-    Plot predictions vs. targets as a scatter plot with marginal distributions,
-    add a y = x line, and save the figure.
+f = 1.2
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.size": 14*f,
+    "axes.titlesize": 16*f,
+    "axes.labelsize": 14*f,
+    "xtick.labelsize": 12*f,
+    "ytick.labelsize": 12*f,
+    "legend.fontsize": 11*f,
+    "figure.dpi": 300,
+})
 
-    Args:
-        predictions: Predictions array or list
-        targets: True target values array or list
-        output_path: Directory to save the plot
-        output_filename: Filename for the saved plot
-    """
-
-    # Convert to numpy arrays if needed
-    predictions = np.array(predictions)
-    targets = np.array(targets)
-
-    if len(predictions) == 0 or len(targets) == 0:
-        print("Warning: Empty predictions or targets arrays")
-        return None
-
-    # Create figure with custom layout for marginal distributions
-    fig = plt.figure(figsize=(8, 8))
-
-    # Define the layout: main plot (center), small marginal histograms (top and right)
-    # Make the scatter plot dominant with thin marginal strips
-    left, width = 0.12, 0.7
-    bottom, height = 0.12, 0.7
-    spacing = 0.01
-    margin_size = 0.12  # Much smaller margins for distributions
-
-    # Define rectangles for the plots
-    rect_scatter = [left, bottom, width, height]
-    rect_histx = [left, bottom + height + spacing, width, margin_size]
-    rect_histy = [left + width + spacing, bottom, margin_size, height]
-
-    # Create the axes
-    ax_scatter = fig.add_axes(rect_scatter)
-    ax_histx = fig.add_axes(rect_histx)
-    ax_histy = fig.add_axes(rect_histy)
-
-    # Main scatter plot (this is now the dominant feature)
-    ax_scatter.scatter(targets, predictions, alpha=0.6, s=30, edgecolors='black', linewidth=0.3)
-
-    # Get min and max values for the identity line
-    min_val = min(targets.min(), predictions.min())
-    max_val = max(targets.max(), predictions.max())
-
-    # Add identity line
-    ax_scatter.plot([min_val, max_val], [min_val, max_val], "r--", linewidth=2, alpha=0.8, label="Perfect prediction")
-
-    # Calculate and display R² on the plot using proper coefficient of determination
-    # R² = 1 - (SS_res / SS_tot) where SS_res = Σ(y_true - y_pred)² and SS_tot = Σ(y_true - y_mean)²
-    ss_res = np.sum((targets - predictions) ** 2)
-    ss_tot = np.sum((targets - np.mean(targets)) ** 2)
-    r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
-
-    ax_scatter.text(0.95, 0.05, f'R² = {r_squared:.3f}', transform=ax_scatter.transAxes,
-                    fontsize=11, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                    horizontalalignment='right', verticalalignment='bottom')
-
-    # Labels and title for main plot
-    ax_scatter.set_xlabel("True Values", fontsize=12)
-    ax_scatter.set_ylabel("Predictions", fontsize=12)
-    ax_scatter.grid(True, alpha=0.3)
-    ax_scatter.legend(fontsize=9)
-
-    # Small marginal histogram for targets (top) - much more subtle
-    ax_histx.hist(targets, bins=30, alpha=0.6, color='steelblue', edgecolor='none')
-    ax_histx.set_xlim(ax_scatter.get_xlim())
-    ax_histx.tick_params(axis='x', labelbottom=False, labelsize=8)
-    ax_histx.tick_params(axis='y', labelsize=8)
-    ax_histx.set_ylabel('Count', fontsize=9)
-
-    # Small marginal histogram for predictions (right) - much more subtle
-    ax_histy.hist(predictions, bins=30, orientation='horizontal', alpha=0.6,
-                    color='lightcoral', edgecolor='none')
-    ax_histy.set_ylim(ax_scatter.get_ylim())
-    ax_histy.tick_params(axis='y', labelleft=False, labelsize=8)
-    ax_histy.tick_params(axis='x', labelsize=8)
-    ax_histy.set_xlabel('Count', fontsize=9)
-
-    # Add subtle mean lines to the marginal plots
-    target_mean = np.mean(targets)
-    pred_mean = np.mean(predictions)
-    ax_histx.axvline(target_mean, color='darkblue', linestyle='--', linewidth=1.5, alpha=0.7)
-    ax_histy.axhline(pred_mean, color='darkred', linestyle='--', linewidth=1.5, alpha=0.7)
-
-    os.makedirs(output_path, exist_ok=True)
-    save_file = os.path.join(output_path, output_filename)
-    plt.savefig(save_file, dpi=300, bbox_inches='tight')
-    print(f"Saved predictions vs targets with distributions to {save_file}")
-    plt.close()
-    return save_file
-
-
-import pandas as pd
 def main():
     # Load
     frozen = pd.read_csv("../trained_models/MEAN_FROZEN_FINAL/per_label_metrics.csv")
@@ -114,7 +26,7 @@ def main():
     lora   = lora[["label", "f1"]].rename(columns={"f1": "f1_lora"})
     mpnn   = mpnn[["label", "f1"]].rename(columns={"f1": "f1_mpnn"})
 
-    # ---- ALIGN BY LABEL (THIS IS THE CRUCIAL STEP) ----
+    # Align by label
     merged = (
         frozen
         .merge(lora, on="label", how="inner")
@@ -125,33 +37,37 @@ def main():
     assert merged["label"].is_unique
     assert not merged.isna().any().any()
 
-    # Sort for visualization (optional, but recommended)
-    merged = merged.sort_values("frequency", ascending=False).reset_index(drop=True)
+    # Sort for visualization
+    K = 30
+
+    topk = (
+        merged
+        .sort_values("frequency", ascending=False)
+        .head(K)
+        .reset_index(drop=True)
+    )
 
     print(merged.head())
     # Plot
-    plt.figure(figsize=(14, 5))
-    plt.plot(merged["label"], merged["f1_mpnn"],   label="MPNN")
-    plt.plot(merged["label"], merged["f1_frozen"], label="ChemBERTa (Frozen)")
-    plt.plot(merged["label"], merged["f1_lora"],   label="ChemBERTa + LoRA")
+    x = np.arange(len(topk))
+    width = 0.25
 
-    plt.xlabel("Odour label (sorted by label frequency)")
+    plt.figure(figsize=(12, 5))
+
+    plt.bar(x - width, topk["f1_mpnn"], width, label="MPNN")
+    plt.bar(x, topk["f1_frozen"], width, label="ChemBERTa (Frozen)")
+    plt.bar(x + width, topk["f1_lora"], width, label="ChemBERTa + LoRA")
+
+    plt.xticks(x, topk["label"], rotation=45, ha="right")
     plt.ylabel("Per-label F1-score")
+    plt.xlabel("Most frequent labels")
+    plt.title(f"Per-label F1 Comparison of Most Frequent Labels")
     plt.legend()
 
-    # Reduce x-tick clutter
-    n = len(merged)
-    step = max(1, n // 40)
-    plt.xticks(range(0, n, step), merged["label"].iloc[::step], rotation=60, ha="right")
-
     plt.tight_layout()
-    plt.savefig("per_label_f1_comparison_frequency_sorted.pdf", bbox_inches="tight")
+    plt.savefig(f"Top_{K}_per_label_f1_bar_chart.pdf", bbox_inches="tight")
     plt.show()
 
-    merged["delta_lora_frozen"] = merged["f1_lora"] - merged["f1_frozen"]
-    merged = merged.sort_values("delta_lora_frozen", ascending=False).reset_index(drop=True)
 
-    print(merged.head())
-    print(merged.tail())
 if __name__ == "__main__":
     main()

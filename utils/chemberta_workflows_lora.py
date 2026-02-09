@@ -39,74 +39,6 @@ from models.simple_mlp import SimpleMLP
 DEFAULT_PRETRAINED_NAME = "DeepChem/ChemBERTa-77M-MLM"
 
 
-class AsymmetricFocalLoss(nn.Module):
-    """
-    Asymmetric Focal Loss for multi-label classification (logits + {0,1} targets).
-
-    Args:
-        gamma_pos: focusing for positive samples
-        gamma_neg: focusing for negative samples (usually larger than gamma_pos)
-        clip: optional probability clipping for negatives (e.g. 0.05)
-        eps: numerical stability
-        reduction: 'mean', 'sum', or 'none'
-        pos_weight: optional tensor broadcastable to targets (e.g. shape [num_labels])
-                    similar spirit to BCEWithLogitsLoss(pos_weight=...)
-    """
-    def __init__(
-        self,
-        gamma_pos: float = 0.0,
-        gamma_neg: float = 4.0,
-        clip: float = 0.05,
-        eps: float = 1e-8,
-        reduction: str = "mean",
-        pos_weight=None,
-    ):
-        super().__init__()
-        self.gamma_pos = gamma_pos
-        self.gamma_neg = gamma_neg
-        self.clip = clip
-        self.eps = eps
-        self.reduction = reduction
-        self.pos_weight = pos_weight
-
-    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        # probabilities
-        prob = torch.sigmoid(logits)
-        prob_pos = prob
-        prob_neg = 1.0 - prob
-
-        # optional negative clipping (helps prevent easy negatives dominating)
-        if self.clip and self.clip > 0:
-            prob_neg = torch.clamp(prob_neg + self.clip, max=1.0)
-
-        # log-probs (stable)
-        log_pos = torch.log(torch.clamp(prob_pos, min=self.eps))
-        log_neg = torch.log(torch.clamp(prob_neg, min=self.eps))
-
-        # base CE for multi-label: y*log(p) + (1-y)*log(1-p)
-        loss = targets * log_pos + (1.0 - targets) * log_neg
-
-        # optional positive weighting (broadcastable)
-        if self.pos_weight is not None:
-            loss = loss * (targets * self.pos_weight + (1.0 - targets))
-
-        # asymmetric focusing
-        if self.gamma_pos != 0.0 or self.gamma_neg != 0.0:
-            pt = prob_pos * targets + prob_neg * (1.0 - targets)
-            gamma = self.gamma_pos * targets + self.gamma_neg * (1.0 - targets)
-            focal_weight = torch.pow(1.0 - pt, gamma)
-            loss = loss * focal_weight
-
-        # negative sign because we used log-likelihood form
-        loss = -loss
-
-        if self.reduction == "mean":
-            return loss.mean()
-        elif self.reduction == "sum":
-            return loss.sum()
-        return loss
-
-
 class FocalLoss(nn.Module):
     """
     Multi-label focal loss.
@@ -164,16 +96,11 @@ class ChembertaMultiLabelClassifier(nn.Module):
         self,
         pretrained,
         num_labels,
-        num_features=0,
         dropout=0.3,
         hidden_channels=100,
         num_mlp_layers=1,
-        pos_weight=None,
         gamma = 0.75,
         alpha = None,
-        gamma_pos=0.0,
-        gamma_neg=4.0,
-        asl_clip=0.0,
         lora_r=8,
         lora_alpha=16,
         lora_dropout=0.05,
@@ -191,23 +118,18 @@ class ChembertaMultiLabelClassifier(nn.Module):
 
         if use_lora:
             lora_cfg = LoraConfig(
-                task_type=TaskType.FEATURE_EXTRACTION,  # we're using RobertaModel, not a HF classifier head
+                task_type=TaskType.FEATURE_EXTRACTION,
                 r=lora_r,
                 lora_alpha=lora_alpha,
                 lora_dropout=lora_dropout,
                 bias="none",
-                target_modules=["query", "key", "value"],  # RoBERTa attention linear layers
+                target_modules=["query", "key", "value"],
             )
 
             self.roberta = get_peft_model(self.roberta, lora_cfg)
 
             self.roberta.print_trainable_parameters()
 
-        # If we want attention pooling
-        if self.pooling_strat == "attention":
-            self.query_vector = nn.Parameter(
-                torch.randn(self.roberta.config.hidden_size)
-            )
 
 
         self.dropout = nn.Dropout(dropout)
@@ -231,12 +153,6 @@ class ChembertaMultiLabelClassifier(nn.Module):
             reduction="mean",
         )
 
-        ''''
-        if pos_weight is not None:
-            self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-        else:
-            self.loss_fct = nn.BCEWithLogitsLoss()
-        '''''
     def forward(self, input_ids=None, attention_mask=None, labels=None, features=None, strat=None):
         if strat is None:
             strat = self.pooling_strat
@@ -272,21 +188,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
             cls_emb = outputs.last_hidden_state[:, 0, :]  # CLS token
             x = self.dropout(cls_emb)
 
-        elif strat == "attention":
-            token_embs = outputs.last_hidden_state  # [B, N, D]
 
-            # [B, N]
-            attn_scores = torch.matmul(token_embs, self.query_vector)
-
-            # [B, N, 1]
-            attn_weights = torch.softmax(attn_scores, dim=1).unsqueeze(-1)
-
-            # weighted sum → [B, D]
-            pooled = torch.sum(token_embs * attn_weights, dim=1)
-
-            x = self.dropout(pooled)
-
-        # (batch_size, num_labels)
         logits = self.mlp(x)
 
         loss = None
@@ -410,7 +312,7 @@ def train_chemberta_multilabel_model(
     Expected args:
         - smiles_column: name of column with SMILES strings
         - target_columns: list of column names for labels (multi-label)
-        - train_csv, output_dir, epochs, batch_size, lr, l2_lambda, l1_lambda,
+        - train_csv, output_dir, epochs, batch_size, lr, weight_decay, l1_lambda,
           dropout, hidden_channels, num_mlp_layers, random_seed
     """
     if device is None:
@@ -458,7 +360,6 @@ def train_chemberta_multilabel_model(
 
     # Setup training arguments
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    dataset_name = os.path.splitext(os.path.basename(args.train_csv))[0]
     output_dir = os.path.join(args.output_dir, timestamp)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -475,7 +376,7 @@ def train_chemberta_multilabel_model(
         save_strategy=save_strategy,
         save_total_limit=1,
         learning_rate=args.lr,
-        weight_decay=args.l2_lambda,
+        weight_decay=args.weight_decay,
         load_best_model_at_end=load_best_model_at_end,
         metric_for_best_model="macro_f1",
         greater_is_better=True,
@@ -493,7 +394,6 @@ def train_chemberta_multilabel_model(
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
-        #l1_lambda=args.l1_lambda,
     )
 
     print("\nTraining ChemBERTa multi-label model...")
@@ -533,7 +433,7 @@ def train_chemberta_multilabel_model(
     print(f"Model saved to {model_path}")
 
     if args.use_lora:
-        # ---- MERGE LORA INTO BASE MODEL FOR TL COMPATIBILITY ----
+        #  MERGE LORA INTO BASE MODEL FOR TL COMPATIBILITY
         print("Output dir:", os.path.abspath(output_dir))
         print("Root files:", os.listdir(output_dir))
 
@@ -564,7 +464,7 @@ def train_chemberta_multilabel_model(
     hyperparams = {
         "hidden_channels": args.hidden_channels,
         "lr": args.lr,
-        "l2_lambda": args.l2_lambda,
+        "weight_decay": args.weight_decay,
         "batch_size": args.batch_size,
         "dropout": args.dropout,
         "num_mlp_layers": args.num_mlp_layers,
@@ -620,11 +520,10 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
     Evaluate per-label precision, recall, F1, and frequency for a multi-label model.
 
     Args:
-        trainer: Hugging Face Trainer (or L1Trainer) object after training.
+        trainer: Hugging Face Trainer object after training.
         dataset: Dataset object (train/val/test) to evaluate on.
         target_cols: List of label column names (order matters!).
         threshold: Float, probability threshold for converting logits → binary predictions.
-        log_to_tensorboard: If True, logs per-label F1 to TensorBoard (default: False).
 
     Returns:
         pd.DataFrame with columns:
@@ -679,15 +578,6 @@ def evaluate_per_label_metrics(trainer, dataset, target_cols, threshold=0.3):
 
     return np.round(f1_score(labels, preds, average="macro"), 3)
 
-import json
-import numpy as np
-import pandas as pd
-from sklearn.metrics import (
-    f1_score,
-    jaccard_score,
-    hamming_loss,
-    accuracy_score,
-)
 
 def sweep_thresholds_from_saved_results(
     results_path,
