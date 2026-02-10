@@ -63,9 +63,9 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     threshold = trial.suggest_float("threshold", 0.25, 0.4)
 
     # Lora
-    lora_r = trial.suggest_categorical("lora_r", [8, 16, 32])
-    lora_alpha = trial.suggest_categorical("lora_alpha", [8, 16, 32, 64])
-    lora_dropout = trial.suggest_float("lora_dropout", 0.0, 0.15)
+    lora_r = None #trial.suggest_categorical("lora_r", [8, 16, 32])
+    lora_alpha = None#trial.suggest_categorical("lora_alpha", [8, 16, 32, 64])
+    lora_dropout = None#trial.suggest_float("lora_dropout", 0.0, 0.15)
 
     # Output directory per trial
     out_dir = os.path.join("optuna_runs", f"trial_{trial.number}")
