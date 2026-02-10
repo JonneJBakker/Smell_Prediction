@@ -92,7 +92,7 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
         alpha=alpha,
 
         # Lora
-        use_lora=True,
+        use_lora=False,
         lora_r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
@@ -128,7 +128,7 @@ def main():
     storage = None
 
     study = optuna.create_study(
-        study_name="chemberta_lora_tuning",
+        study_name="chemberta_frozen_tuning",
         direction="maximize",
         sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
         storage=storage,
