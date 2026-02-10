@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
+from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
@@ -83,11 +83,38 @@ def train_mlc():
         random_seed=42,
     )
 
+
+    # LORA NOW GOOD OPTUNA
+    best_params = SimpleNamespace(
+        train_csv='../Data/splits/train_stratified80.csv',
+        test_csv='../Data/splits/test_stratified10.csv',
+        smiles_column="nonStereoSMILES",
+        target_columns=target_cols,
+        output_dir=f'../trained_models/',
+        epochs=50,
+        lr=0.0005,
+        pooling_strat="cls_mean",
+        loss_type="focal",
+        gamma=1.9167984440970527,
+        alpha=0.1612449232980698,
+        batch_size=16,
+        weight_decay=0.056757176895569576,
+        dropout=0.29820017391677023,
+        hidden_channels=512,
+        num_mlp_layers=1,
+        threshold=0.3636917584461052,
+        use_lora = True,
+        lora_r=8,
+        lora_alpha=64,
+        lora_dropout=0.08509500422040107,
+        random_seed=42,
+    )
+
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
-    pooling_strats = ["cls_mean"]
+    pooling_strats = ["mean", "max", "cls", "cls_mean", "cls_max", "mean_max"]
 
     for p in pooling_strats:
-        args = copy.deepcopy(lora_params)
+        args = copy.deepcopy(best_params)
         args.pooling_strat = p
 
 

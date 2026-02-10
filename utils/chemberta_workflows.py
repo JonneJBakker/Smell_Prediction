@@ -119,6 +119,7 @@ class ChembertaMultiLabelClassifier(nn.Module):
                 p.requires_grad = False
 
         if use_lora:
+            print('Using lora')
             lora_cfg = LoraConfig(
                 task_type=TaskType.FEATURE_EXTRACTION,
                 r=lora_r,

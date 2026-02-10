@@ -45,7 +45,7 @@ def build_args(trial: optuna.Trial, smiles_col: str, target_cols: list[str]) -> 
     alpha = None
     if loss_type == "focal":
         gamma = trial.suggest_float("gamma", 1.75, 2.5)
-        # keep alpha scalar; if you later use per-label alpha, extend this
+
         alpha = trial.suggest_float("alpha", 0.1, 0.5)
 
     # Optim / training
