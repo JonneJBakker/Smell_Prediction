@@ -89,7 +89,7 @@ def train_mlc():
         smiles_column="nonStereoSMILES",
         target_columns=target_cols,
         output_dir=f'../trained_models/',
-        epochs=50,
+        epochs=70,
         lr=0.0005,
         pooling_strat='cls_mean',
         loss_type='focal',
