@@ -348,7 +348,6 @@ def train_chemberta_multilabel_model(
         dropout=args.dropout,
         hidden_channels=args.hidden_channels,
         num_mlp_layers=args.num_mlp_layers,
-        pos_weight=None,
         gamma = args.gamma,
         alpha = args.alpha,
         pooling_strat=args.pooling_strat,
