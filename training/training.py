@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
+from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
@@ -82,10 +82,34 @@ def train_mlc():
         lora_dropout=0.0614101620783747,
         random_seed=42,
     )
-
+    # FOZEN NOW GOOD OPTUNA
+    frozen_params = SimpleNamespace(
+        train_csv='../Data/splits/train_stratified80.csv',
+        test_csv='../Data/splits/test_stratified10.csv',
+        smiles_column="nonStereoSMILES",
+        target_columns=target_cols,
+        output_dir=f'../trained_models/',
+        epochs=50,
+        lr=0.0005,
+        pooling_strat='cls_mean',
+        loss_type='focal',
+        gamma=2.1915795902136392,
+        alpha=0.3521229430603956,
+        batch_size=8,
+        weight_decay=0.113858788969263,
+        dropout=0.10269007352639603,
+        hidden_channels=256,
+        num_mlp_layers=2,
+        threshold=0.3579330101884744,
+        use_lora = False,
+        lora_r = 8,
+        lora_alpha = 64,
+        lora_dropout = 0.08509500422040107,
+        random_seed = 42,
+    )
 
     # LORA NOW GOOD OPTUNA
-    best_params = SimpleNamespace(
+    lora_params = SimpleNamespace(
         train_csv='../Data/splits/train_stratified80.csv',
         test_csv='../Data/splits/test_stratified10.csv',
         smiles_column="nonStereoSMILES",
@@ -111,10 +135,10 @@ def train_mlc():
     )
 
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
-    pooling_strats = ["cls_mean"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
+    pooling_strats = ["mean", "max", "cls", "cls_mean", "cls_max", "mean_max"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
 
     for p in pooling_strats:
-        args = copy.deepcopy(best_params)
+        args = copy.deepcopy(frozen_params)
         args.pooling_strat = p
 
 
