@@ -10,13 +10,13 @@ from sklearn.cluster import KMeans
 from matplotlib.colors import LogNorm
 from itertools import combinations
 import matplotlib as mpl
-k = 1.25
+k = 1.3
 mpl.rcParams.update({
     "figure.titlesize": 18 * k,
     "axes.titlesize": 18*k,
-    "axes.labelsize": 16*k,
-    "xtick.labelsize": 14*k,
-    "ytick.labelsize": 14*k,
+    "axes.labelsize": 20*k,
+    "xtick.labelsize": 18*k,
+    "ytick.labelsize": 18*k,
     "legend.fontsize": 14*k,
     "font.size": 14*k
 })
@@ -854,19 +854,19 @@ analyzer.build_fragment_correlation()
 
 
 analyzer.plot_fragment_smell_heatmap(
-    top_k_frags=30,
-    top_k_smells=30,
+    top_k_frags=25,
+    top_k_smells=25,
     scale="log",
     log_pseudocount=1
 )
 
 analyzer.plot_smell_cooccurrence_heatmap(
-    top_k_smells=30,
+    top_k_smells=25,
     scale="log"
 )
 
 analyzer.plot_fragment_cooccurrence_heatmap(
-    top_k_frags=30,
+    top_k_frags=25,
     scale="log",
     log_pseudocount=1,
     hide_diagonal=True
