@@ -116,7 +116,7 @@ def train_mlc():
         target_columns=target_cols,
         output_dir=f'../trained_models/',
         epochs=50,
-        lr=0.0005,
+        lr=0.00025,
         pooling_strat="cls_mean",
         loss_type="focal",
         gamma=1.9167984440970527,
@@ -138,7 +138,7 @@ def train_mlc():
     pooling_strats = ["cls_mean"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
 
     for p in pooling_strats:
-        args = copy.deepcopy(frozen_params)
+        args = copy.deepcopy(lora_params)
         args.pooling_strat = p
 
 
