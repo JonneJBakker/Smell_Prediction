@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pandas as pd
 import argparse
 #from utils.normalizing import normalize_csv
-from utils.chemberta_workflows_lora import train_chemberta_multilabel_model
+from utils.chemberta_workflows import train_chemberta_multilabel_model
 #from utils.molformer_workflows import train_molformer_multilabel_model
 #from utils.make_pom import plot_pca
 #from utils.contrastie_loss import train_chemberta_multilabel_model
@@ -135,7 +135,7 @@ def train_mlc():
     )
 
     #smell_mlc_parser = argparse.Namespace(**asym_loss_best)
-    pooling_strats = ["cls_mean"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
+    pooling_strats = ["mean", "max", "cls", "cls_mean", "cls_max", "mean_max"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
 
     for p in pooling_strats:
         args = copy.deepcopy(lora_params)
