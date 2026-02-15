@@ -37,9 +37,6 @@ Splitting is performed using stratification techniques to preserve label distrib
 
 A pretrained ChemBERTa transformer encoder is used as a fixed feature extractor. Only the classification head is trained.
 
-- Backbone parameters frozen
-- Linear classification head
-- Sigmoid outputs for multi-label prediction
 
 Saved under:
 
@@ -171,3 +168,6 @@ Jonne Bakker
 University of Groningen
 2026
 
+## Acknowledgements
+
+MoLe Framework used for MI (Müller et al., 2025)
