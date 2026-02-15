@@ -4,13 +4,7 @@
 
 This project investigates **multi-label odor prediction from molecular SMILES representations** using deep learning approaches. The primary objective is to model the relationship between molecular structure and perceptual odor descriptors.
 
-We compare transformer-based language models for chemistry (ChemBERTa) with graph-based neural networks (MPNN), and explore parameter-efficient fine-tuning strategies. The study emphasizes:
-
-- Representation learning from SMILES strings
-- Multi-label classification under class imbalance
-- Parameter-efficient adaptation (LoRA)
-- Per-label performance analysis
-- Functional group and fragment-level interpretability
+We compare transformer-based language models for chemistry (ChemBERTa) with graph-based neural networks (MPNN), and explore parameter-efficient fine-tuning strategies. Finally we investigate MI on chemberta
 
 ---
 
@@ -104,6 +98,14 @@ Optuna is used for automated hyperparameter search.
 
 ---
 
+## Mechanistic Interpretability
+
+Mechanistic interpretability analyses are shown under
+```
+mechanistic_interpretability/TL_chem.py
+```
+
+---
 ## Evaluation Metrics
 
 Model performance is evaluated using:
@@ -143,7 +145,6 @@ This module supports:
 
 ### Requirements
 
-- Python 3.10+
 - torch
 - transformers
 - peft
@@ -152,6 +153,7 @@ This module supports:
 - numpy
 - matplotlib
 - optuna
+- transformer-lens
 - RDKit (for functional group analysis)
 
 Example installation:

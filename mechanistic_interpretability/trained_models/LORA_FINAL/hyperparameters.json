@@ -1,0 +1,19 @@
+{
+  "hidden_channels": 512,
+  "lr": 0.0005,
+  "weight_decay": 0.056757176895569576,
+  "batch_size": 16,
+  "dropout": 0.29820017391677023,
+  "num_mlp_layers": 1,
+  "pooling_strat": "cls_mean",
+  "random_seed": 42,
+  "loss_type": "focal",
+  "epochs": 50,
+  "num_labels": 138,
+  "threshold": 0.3636917584461052,
+  "gamma": 1.9167984440970527,
+  "alpha": 0.1612449232980698,
+  "lora_r": 8,
+  "lora_alpha": 64,
+  "lora_dropout": 0.08509500422040107
+}

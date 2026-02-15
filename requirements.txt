@@ -23,6 +23,9 @@ optuna>=3.3.0
 # Chemistry
 rdkit>=2022.9.5
 
+#MI
+transformer-lens>=1.14.0
+
 # Utilities
 tqdm>=4.65.0
 
