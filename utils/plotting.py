@@ -17,9 +17,9 @@ plt.rcParams.update({
 
 def main():
     # Load
-    frozen = pd.read_csv("../trained_models/MEAN_FROZEN_FINAL/per_label_metrics.csv")
-    lora   = pd.read_csv("../trained_models/MEAN_LORA_FINAL/per_label_metrics.csv")
-    mpnn   = pd.read_csv("../Data/Metrics/final_models_per_label_metrics/mpnn_per_label_metrics.csv")
+    frozen = pd.read_csv("../trained_models/FROZEN_FINAL/per_label_metrics.csv")
+    lora   = pd.read_csv("../trained_models/LORA_FINAL/per_label_metrics.csv")
+    mpnn   = pd.read_csv("../Data/mpnn_per_label_metrics.csv")
 
     # Keep only what we need
     frozen = frozen[["label", "f1", "frequency"]].rename(columns={"f1": "f1_frozen"})
@@ -33,7 +33,7 @@ def main():
         .merge(mpnn, on="label", how="inner")
     )
 
-    # Optional sanity checks
+   # sanity checks
     assert merged["label"].is_unique
     assert not merged.isna().any().any()
 
@@ -71,3 +71,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -119,7 +119,7 @@ def train_mpnn(filepath = 'Data/Multi-Labelled_Smiles_Odors_dataset.csv'):
 
     y_pred = (y_prob >= threshold).astype(int)
 
-    # --- ChemBERTa-style metrics (same as in chemberta_workflows_lora.py) ---
+    # --- ChemBERTa-style metrics (same as in chemberta_final_train_plus_saving.py) ---
 
     micro_accuracy = accuracy_score(y_true, y_pred)
     auroc_macro = roc_auc_score(y_true, y_prob, average="macro")

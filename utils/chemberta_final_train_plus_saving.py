@@ -303,7 +303,7 @@ def find_peft_dir(root_dir: str) -> str:
     return ckpts[0]
 
 
-def train_chemberta_multilabel_model(
+def train_and_save_chemberta_multilabel_model(
     args, df_train, df_test, df_val, device=None,
 ):
     """
