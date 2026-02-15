@@ -40,7 +40,7 @@ def train_mlc():
         lora_r = 8,
         lora_alpha = 64,
         lora_dropout = 0.08509500422040107,
-        random_seed = 42,
+        random_seed = RANDOM_SEED,
     )
 
     # LORA NOW GOOD OPTUNA
@@ -66,7 +66,7 @@ def train_mlc():
         lora_r=8,
         lora_alpha=64,
         lora_dropout=0.08509500422040107,
-        random_seed=42,
+        random_seed=RANDOM_SEED,
     )
 
     pooling_strats = ["mean", "max", "cls", "cls_mean", "cls_max", "mean_max"] #"mean", "max", "cls", "cls_mean", "cls_max", "mean_max"
@@ -90,6 +90,6 @@ def train_mlc():
 
         print(p)
 
-
+    # So we can use them in MoLe
     train_and_save_chemberta_multilabel_model(frozen_params, df_train=train, df_test=test, df_val=val)
     train_and_save_chemberta_multilabel_model(lora_params, df_train=train, df_test=test, df_val=val)
