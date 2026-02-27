@@ -203,7 +203,7 @@ Saved artifacts include:
 
 ## Reproducibility
 
--   Fixed random seed: RANDOM_SEED = 42
+-   Fixed random seed
 -   Precomputed stratified splits included
 -   All evaluation uses fixed train/val/test splits
 
