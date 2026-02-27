@@ -1,7 +1,6 @@
 # Mechanistic Interpretability of ChemBERTa for Multi-Label Odour Prediction
 
-This repository contains the code and experimental artifacts for a
-bachelor thesis project on multi-label odour prediction from molecular
+This repository contains the code for a project on multi-label odour prediction from molecular
 structure using SMILES representations.
 
 The project evaluates ChemBERTa (a Transformer pretrained on SMILES)
