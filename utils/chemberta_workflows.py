@@ -2,7 +2,7 @@
 chemberta_workflows.py
 
 - Loads DeepChem/ChemBERTa-77M-MLM via Hugging Face
-- Freezes base encoder, trains an MLP head
+- Freezes base encoder or uses LoRA, trains an MLP head
 - Pooling strategies: cls, mean, max, cls_mean, mean_max, attention
 - Losses: bce, focal
 """
